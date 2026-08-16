@@ -1,0 +1,119 @@
+<!-- ── Top Navbar ──────────────────────────────────────────────── -->
+<nav class="navbar glass">
+  <div class="nav-inner container">
+    <div class="nav-brand"><span class="logo-icon">💸</span><span class="brand-text">SplitWise <b>Pro</b></span></div>
+    <div class="nav-actions">
+      <button class="btn btn-icon btn-secondary" (click)="toggleTheme()" title="Toggle theme">
+        {{ isDark() ? '☀️' : '🌙' }}
+      </button>
+      <div class="user-pill" *ngIf="user() as u">
+        <div class="avatar avatar-sm">{{ getInitials(u.displayName) }}</div>
+        <span class="user-name">{{ u.displayName }}</span>
+      </div>
+      <button class="btn btn-sm btn-secondary" (click)="logout()">Logout</button>
+    </div>
+  </div>
+</nav>
+
+<!-- ── Main Content ───────────────────────────────────────────── -->
+<main class="dashboard container">
+  <!-- Header -->
+  <header class="dash-header">
+    <div>
+      <h1 class="dash-title">Your Groups</h1>
+      <p class="dash-subtitle">Manage expenses with friends, family & flatmates</p>
+    </div>
+    <div class="dash-header-actions">
+      <a routerLink="/trips" class="btn btn-secondary">🗺️ Trips</a>
+      <button class="btn btn-primary" (click)="showCreateModal.set(true)">
+        <span>＋</span> New Group
+      </button>
+    </div>
+  </header>
+
+  <!-- Skeleton Loading -->
+  @if (isLoading()) {
+    <div class="groups-grid">
+      @for (i of [1,2,3,4,5,6]; track i) {
+        <div class="card group-card-skeleton">
+          <div class="skeleton" style="width:48px;height:48px;border-radius:50%"></div>
+          <div class="skeleton" style="width:70%;height:20px;margin-top:12px"></div>
+          <div class="skeleton" style="width:40%;height:14px;margin-top:8px"></div>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Empty State -->
+  @if (!isLoading() && groups().length === 0) {
+    <div class="empty-state">
+      <div class="empty-icon">🎉</div>
+      <h2>No groups yet!</h2>
+      <p>Create your first group to start splitting expenses with friends.</p>
+      <button class="btn btn-primary btn-lg" (click)="showCreateModal.set(true)">＋ Create First Group</button>
+    </div>
+  }
+
+  <!-- Group Cards -->
+  @if (!isLoading() && groups().length > 0) {
+    <div class="groups-grid">
+      @for (group of groups(); track group.id; let i = $index) {
+        <a class="card group-card" [routerLink]="['/group', group.id]">
+          <div class="group-card-header">
+            <div class="group-avatar" [style.background]="getGroupColor(i)">
+              {{ group.name[0] }}
+            </div>
+            <div class="group-meta">
+              <h3>{{ group.name }}</h3>
+              <span class="badge">{{ group.defaultCurrency }}</span>
+            </div>
+          </div>
+          <p class="group-desc">{{ group.description || 'No description' }}</p>
+          <div class="group-card-footer">
+            <div class="members-preview">
+              @for (m of group.members.slice(0, 4); track m.userId) {
+                <div class="avatar avatar-sm" [title]="m.displayName">{{ getInitials(m.displayName) }}</div>
+              }
+              @if (group.members.length > 4) {
+                <div class="avatar avatar-sm more">+{{ group.members.length - 4 }}</div>
+              }
+            </div>
+            <span class="member-count">{{ getMemberCount(group) }} members</span>
+          </div>
+        </a>
+      }
+    </div>
+  }
+</main>
+
+<!-- ── Create Group Modal ─────────────────────────────────────── -->
+@if (showCreateModal()) {
+  <div class="modal-backdrop" (click)="showCreateModal.set(false)">
+    <div class="modal glass" (click)="$event.stopPropagation()">
+      <h2>Create New Group</h2>
+      <form (ngSubmit)="createGroup()" class="modal-form">
+        <div class="form-group">
+          <label>Group Name</label>
+          <input class="form-input" [(ngModel)]="newGroup.name" name="name" placeholder="e.g., Trip to Goa 🏖️" required>
+        </div>
+        <div class="form-group">
+          <label>Description (optional)</label>
+          <input class="form-input" [(ngModel)]="newGroup.description" name="desc" placeholder="What's this group for?">
+        </div>
+        <div class="form-group">
+          <label>Currency</label>
+          <select class="form-input" [(ngModel)]="newGroup.defaultCurrency" name="currency">
+            <option value="INR">🇮🇳 INR — Indian Rupee</option>
+            <option value="USD">🇺🇸 USD — US Dollar</option>
+            <option value="EUR">🇪🇺 EUR — Euro</option>
+            <option value="GBP">🇬🇧 GBP — British Pound</option>
+          </select>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" (click)="showCreateModal.set(false)">Cancel</button>
+          <button type="submit" class="btn btn-primary" [disabled]="!newGroup.name">Create Group</button>
+        </div>
+      </form>
+    </div>
+  </div>
+}

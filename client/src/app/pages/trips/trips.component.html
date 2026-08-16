@@ -1,0 +1,656 @@
+<div class="trips-page" [class.dark]="isDark()">
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- ── TRIP LIST VIEW ─────────────────────────────────── -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  @if (view() === 'list') {
+    <div class="page-header">
+      <div class="header-left">
+        <a routerLink="/dashboard" class="back-link">← Dashboard</a>
+        <h1>🗺️ My Trips</h1>
+        <p class="header-sub">Budget-tracked group adventures</p>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-secondary" (click)="showJoinModal.set(true)">🔗 Join Trip</button>
+        <button class="btn btn-primary" (click)="openCreateModal()">✈️ New Trip</button>
+      </div>
+    </div>
+
+    @if (isLoading()) {
+      <div class="loading-state"><div class="spinner-lg"></div><p>Loading your trips...</p></div>
+    }
+
+    @if (!isLoading() && trips().length === 0) {
+      <div class="empty-trips">
+        <div class="empty-icon">🗺️</div>
+        <h2>No trips yet</h2>
+        <p>Create a new trip or join one with a trip code!</p>
+        <div class="empty-actions">
+          <button class="btn btn-primary btn-lg" (click)="openCreateModal()">✈️ Create Trip</button>
+          <button class="btn btn-secondary btn-lg" (click)="showJoinModal.set(true)">🔗 Join with Code</button>
+        </div>
+      </div>
+    }
+
+    <div class="trips-grid">
+      @for (trip of trips(); track trip.id) {
+        <div class="trip-card" (click)="openTrip(trip)">
+          <div class="trip-card-glow" [style.background]="'radial-gradient(circle at top right, ' + getCategoryColor(trip.destination || 'Other') + '33, transparent 70%)'"></div>
+          <div class="trip-card-header">
+            <div class="trip-icon">{{ trip.destination ? '✈️' : '🗺️' }}</div>
+            <div class="trip-meta">
+              <h3>{{ trip.name }}</h3>
+              @if (trip.destination) { <span class="trip-dest">📍 {{ trip.destination }}</span> }
+            </div>
+            @if (trip.isAdmin) { <span class="admin-badge">👑</span> }
+          </div>
+          <div class="trip-budget-row">
+            <div>
+              <span class="spent-big">{{ getCurrencySymbol(trip.currency) }}{{ trip.totalSpent | number:'1.0-0' }}</span>
+              <span class="of-total"> / {{ getCurrencySymbol(trip.currency) }}{{ trip.budget | number:'1.0-0' }}</span>
+            </div>
+            <span class="remaining-chip" [class.over]="trip.remainingBudget < 0">
+              {{ trip.remainingBudget >= 0 ? '✅' : '🚨' }} {{ getCurrencySymbol(trip.currency) }}{{ (trip.remainingBudget < 0 ? -trip.remainingBudget : trip.remainingBudget) | number:'1.0-0' }} {{ trip.remainingBudget >= 0 ? 'left' : 'over' }}
+            </span>
+          </div>
+          <div class="trip-progress-track">
+            <div class="trip-progress-fill"
+              [style.width.%]="Math.min((trip.totalSpent / trip.budget) * 100, 100)"
+              [class.over-budget]="trip.totalSpent > trip.budget"
+              [class.near-budget]="(trip.totalSpent / trip.budget) >= 0.8 && trip.totalSpent <= trip.budget">
+            </div>
+          </div>
+          <div class="trip-card-footer">
+            <div class="member-stack">
+              @for (m of trip.members.slice(0, 4); track m.userId) {
+                <div class="avatar-xs" [title]="m.displayName">{{ getInitials(m.displayName) }}</div>
+              }
+              @if (trip.members.length > 4) {
+                <div class="avatar-xs more">+{{ trip.members.length - 4 }}</div>
+              }
+            </div>
+            <div class="trip-code-chip">{{ formatCode(trip.tripCode) }}</div>
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- ── TRIP DETAIL VIEW ───────────────────────────────── -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  @if (view() === 'detail' && activeTrip(); as trip) {
+
+    <!-- Sticky Header -->
+    <div class="detail-header glass-sticky">
+      <div class="detail-header-left">
+        <button class="back-btn" (click)="goBack()">
+          <span class="back-arrow">←</span>
+        </button>
+        <div>
+          <div class="detail-title-row">
+            <h1>{{ trip.name }}</h1>
+            @if (trip.isAdmin) { <span class="admin-badge">👑 Admin</span> }
+            @if (!trip.isActive) { <span class="closed-badge">🔒 Closed</span> }
+          </div>
+          @if (trip.destination) { <p class="detail-dest">📍 {{ trip.destination }}</p> }
+        </div>
+      </div>
+      <div class="detail-actions">
+        <button class="btn btn-ai" (click)="openChat()" title="Ask AI">
+          <span class="ai-dot"></span>🤖 Ask AI
+        </button>
+        <button class="btn btn-ghost" (click)="showShareModal.set(true)">📤 Share</button>
+        @if (trip.isAdmin) {
+          <button class="btn btn-ghost" (click)="openBudgetModal()">💰 Budget</button>
+        }
+        @if (trip.isActive) {
+          <button class="btn btn-primary" (click)="openAddExpense()">＋ Add Spend</button>
+        }
+      </div>
+    </div>
+
+    <!-- Budget Hero Card -->
+    <div class="budget-hero" [class.over]="trip.remainingBudget < 0" [class.near]="budgetPercent() >= 80 && trip.remainingBudget >= 0">
+      <div class="budget-hero-bg"></div>
+      <div class="bh-content">
+        <div class="bh-stats">
+          <div class="bh-stat">
+            <span class="bh-val">{{ getCurrencySymbol(trip.currency) }}{{ trip.budget | number:'1.0-0' }}</span>
+            <span class="bh-label">Total Budget</span>
+          </div>
+          <div class="bh-divider"></div>
+          <div class="bh-stat primary">
+            <span class="bh-val">{{ getCurrencySymbol(trip.currency) }}{{ trip.totalSpent | number:'1.0-0' }}</span>
+            <span class="bh-label">Spent</span>
+          </div>
+          <div class="bh-divider"></div>
+          <div class="bh-stat" [class.danger-stat]="trip.remainingBudget < 0">
+            <span class="bh-val">{{ trip.remainingBudget < 0 ? '-' : '' }}{{ getCurrencySymbol(trip.currency) }}{{ (trip.remainingBudget < 0 ? -trip.remainingBudget : trip.remainingBudget) | number:'1.0-0' }}</span>
+            <span class="bh-label">{{ trip.remainingBudget < 0 ? '🚨 Over Budget' : '✅ Remaining' }}</span>
+          </div>
+          <div class="bh-divider"></div>
+          <div class="bh-stat">
+            <span class="bh-val">{{ trip.members.length }}</span>
+            <span class="bh-label">Members</span>
+          </div>
+        </div>
+
+        <div class="bh-bar-area">
+          <div class="bh-bar-track">
+            <div class="bh-bar-fill {{ getBudgetClass() }}"
+              [style.width.%]="budgetPercent()">
+              <div class="bh-bar-glow"></div>
+            </div>
+          </div>
+          <div class="bh-bar-labels">
+            <span class="bh-pct">{{ budgetPercent() | number:'1.0-0' }}% used</span>
+            <span>{{ getCurrencySymbol(trip.currency) }}{{ trip.budget | number:'1.0-0' }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Members Row -->
+    <div class="members-strip">
+      <h3 class="strip-title">👥 Members</h3>
+      <div class="members-avatars">
+        @for (m of trip.members; track m.userId) {
+          <div class="member-avatar-card" [title]="m.displayName">
+            <div class="mav-circle" [class.admin-av]="m.isAdmin">{{ getInitials(m.displayName) }}</div>
+            <span class="mav-name">{{ m.displayName.split(' ')[0] }}</span>
+            @if (m.isAdmin) { <span class="mav-crown">👑</span> }
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- Expenses Loading -->
+    @if (expensesLoading()) {
+      <div class="exp-loading"><div class="spinner-lg"></div></div>
+    }
+
+    <!-- ── Expenses ─────────────────────────────────────────── -->
+    @if (!expensesLoading()) {
+      <div class="expenses-section">
+        <div class="exp-section-header">
+          <div class="exp-title-group">
+            <h2>💳 Expenses</h2>
+            <span class="exp-count-badge">{{ activeExpenses().length }}</span>
+          </div>
+          <div class="exp-controls">
+            <div class="filter-tabs">
+              <button [class.active]="expenseFilter() === 'all'" (click)="expenseFilter.set('all')">All</button>
+              <button [class.active]="expenseFilter() === 'mine'" (click)="expenseFilter.set('mine')">Mine</button>
+            </div>
+            @if (trip.isActive) {
+              <button class="btn btn-primary btn-sm" (click)="openAddExpense()">＋ Add</button>
+            }
+          </div>
+        </div>
+
+        @if (filteredActiveExpenses().length === 0) {
+          <div class="no-expenses">
+            <div class="ne-icon">🧾</div>
+            <h3>No expenses yet</h3>
+            <p>{{ expenseFilter() === 'mine' ? "You haven't added any expenses yet." : "Be the first to log a spend!" }}</p>
+            @if (trip.isActive) {
+              <button class="btn btn-primary" (click)="openAddExpense()">＋ Log First Spend</button>
+            }
+          </div>
+        }
+
+        <!-- Advanced Expense Cards Grid -->
+        <div class="expense-grid">
+          @for (exp of filteredActiveExpenses(); track exp.id; let i = $index) {
+            <div class="exp-card" (click)="openExpenseDetail(exp)"
+              [style.animation-delay]="(i * 0.06) + 's'"
+              [style.--cat-color]="getCategoryColor(exp.category)">
+              <!-- Card glow top bar -->
+              <div class="exp-card-top-bar" [style.background]="getCategoryColor(exp.category)"></div>
+
+              <!-- Category + Amount header -->
+              <div class="exp-card-header">
+                <div class="exp-cat-icon" [style.background]="getCategoryColor(exp.category) + '22'" [style.color]="getCategoryColor(exp.category)">
+                  {{ getCategoryIcon(exp.category) }}
+                </div>
+                <div class="exp-cat-name">{{ exp.category }}</div>
+                @if (trip.isAdmin) {
+                  <button class="exp-action-btn reject-btn" (click)="openRejectModal(exp); $event.stopPropagation()" title="Reject">✕</button>
+                }
+              </div>
+
+              <!-- Main Amount -->
+              <div class="exp-card-amount">{{ getCurrencySymbol(exp.currency) }}{{ exp.amount | number:'1.0-0' }}</div>
+
+              <!-- Description -->
+              <div class="exp-card-desc">{{ exp.description }}</div>
+
+              <!-- Reason tag -->
+              <div class="exp-reason-tag">
+                <span class="reason-icon">💬</span>
+                <span>{{ exp.reason }}</span>
+              </div>
+
+              <!-- Footer -->
+              <div class="exp-card-footer">
+                <div class="exp-card-by">
+                  <div class="exp-avatar">{{ getInitials(exp.addedByDisplayName) }}</div>
+                  <span>{{ exp.addedByDisplayName.split(' ')[0] }}</span>
+                </div>
+                <div class="exp-card-date">
+                  <span class="exp-date-day">{{ exp.spentAt | date:'dd MMM' }}</span>
+                  <span class="exp-date-time">{{ exp.spentAt | date:'h:mm a' }}</span>
+                </div>
+              </div>
+
+              @if (exp.screenshotData) {
+                <div class="exp-receipt-badge">📷</div>
+              }
+
+              <!-- Hover shimmer -->
+              <div class="exp-card-shimmer"></div>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Rejected Entries -->
+      @if (rejectedExpenses().length > 0) {
+        <div class="rejected-section">
+          <div class="exp-section-header">
+            <div class="exp-title-group">
+              <h2>🚫 Rejected Entries</h2>
+              <span class="exp-count-badge rejected-badge-count">{{ rejectedExpenses().length }}</span>
+            </div>
+          </div>
+          <div class="expense-grid">
+            @for (exp of rejectedExpenses(); track exp.id) {
+              <div class="exp-card rejected-exp-card" (click)="openExpenseDetail(exp)">
+                <div class="exp-card-top-bar" style="background: #ff6b6b"></div>
+                <div class="exp-card-header">
+                  <div class="exp-cat-icon" style="background: rgba(255,107,107,.15); color: #ff6b6b;">🚫</div>
+                  <div class="exp-cat-name" style="color: var(--danger)">Rejected</div>
+                  @if (trip.isAdmin) {
+                    <button class="exp-action-btn restore-btn" (click)="restoreExpense(exp); $event.stopPropagation()" title="Restore">↩</button>
+                  }
+                </div>
+                <div class="exp-card-amount line-through" style="color: var(--text-tertiary)">{{ getCurrencySymbol(exp.currency) }}{{ exp.amount | number:'1.0-0' }}</div>
+                <div class="exp-card-desc line-through">{{ exp.description }}</div>
+                <div class="rejection-pill">⚠️ {{ exp.rejectionReason }}</div>
+                <div class="exp-card-footer">
+                  <div class="exp-card-by">
+                    <div class="exp-avatar">{{ getInitials(exp.addedByDisplayName) }}</div>
+                    <span>{{ exp.addedByDisplayName.split(' ')[0] }}</span>
+                  </div>
+                  <span style="font-size: var(--fs-xs); color: var(--text-tertiary)">{{ exp.spentAt | date:'dd MMM' }}</span>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      }
+    }
+  }
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- ── AI CHAT PANEL (Sliding) ──────────────────────────── -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+@if (showChat()) {
+  <div class="chat-backdrop" (click)="showChat.set(false)"></div>
+  <div class="chat-panel glass" (click)="$event.stopPropagation()">
+    <div class="chat-header">
+      <div class="chat-title">
+        <div class="ai-avatar">🤖</div>
+        <div>
+          <span class="chat-name">Trip AI Assistant</span>
+          <span class="chat-status"><span class="status-dot"></span> Online</span>
+        </div>
+      </div>
+      <button class="btn-x" (click)="showChat.set(false)">✕</button>
+    </div>
+
+    <div class="chat-messages" id="chat-messages-container">
+      @for (msg of chatMessages(); track $index) {
+        <div class="chat-msg" [class.user-msg]="msg.role === 'user'" [class.ai-msg]="msg.role === 'ai'">
+          @if (msg.role === 'ai') {
+            <div class="msg-avatar ai-msg-av">🤖</div>
+          }
+          <div class="msg-bubble" [innerHTML]="formatMarkdown(msg.text)"></div>
+          @if (msg.role === 'user') {
+            <div class="msg-avatar user-msg-av">{{ getInitials(user()?.displayName || 'U') }}</div>
+          }
+        </div>
+      }
+      @if (chatLoading()) {
+        <div class="chat-msg ai-msg">
+          <div class="msg-avatar ai-msg-av">🤖</div>
+          <div class="msg-bubble typing-bubble">
+            <span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>
+          </div>
+        </div>
+      }
+      <div id="chat-bottom"></div>
+    </div>
+
+    <div class="chat-suggestions">
+      @for (s of chatSuggestions; track s) {
+        <button class="suggestion-chip" (click)="useSuggestion(s)">{{ s }}</button>
+      }
+    </div>
+
+    <div class="chat-input-row">
+      <input class="chat-input" [(ngModel)]="chatInput"
+        placeholder="Ask about budget, spending, members..."
+        (keyup.enter)="sendChatMessage()"
+        [disabled]="chatLoading()">
+      <button class="chat-send-btn" (click)="sendChatMessage()" [disabled]="!chatInput.trim() || chatLoading()">
+        @if (chatLoading()) { <span class="spinner"></span> } @else { ➤ }
+      </button>
+    </div>
+  </div>
+}
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- ── EXPENSE DETAIL MODAL ─────────────────────────────── -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+@if (selectedExpense(); as exp) {
+  <div class="modal-backdrop" (click)="closeExpenseDetail()">
+    <div class="modal expense-detail-modal glass" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="exp-detail-cat" [style.background]="getCategoryColor(exp.category) + '22'" [style.color]="getCategoryColor(exp.category)">
+          {{ getCategoryIcon(exp.category) }}
+        </div>
+        <div>
+          <h2>{{ exp.description }}</h2>
+          <span class="cat-tag" [style.color]="getCategoryColor(exp.category)">{{ exp.category }}</span>
+        </div>
+        <button class="btn-x" (click)="closeExpenseDetail()">✕</button>
+      </div>
+
+      @if (exp.isRejected) {
+        <div class="rejection-banner">
+          🚫 Rejected by {{ exp.rejectedByDisplayName }} on {{ exp.rejectedAt | date:'dd MMM yyyy' }}<br>
+          <b>Reason:</b> {{ exp.rejectionReason }}
+        </div>
+      }
+
+      <div class="exp-detail-amount">
+        {{ getCurrencySymbol(exp.currency) }}{{ exp.amount | number:'1.2-2' }}
+      </div>
+
+      <div class="exp-detail-grid">
+        <div class="edg-row"><span>Added by</span><b>{{ exp.addedByDisplayName }}</b></div>
+        <div class="edg-row"><span>Date & Time</span><b>{{ exp.spentAt | date:'dd MMM yyyy, h:mm a' }}</b></div>
+        <div class="edg-row"><span>Category</span><b>{{ exp.category }}</b></div>
+        <div class="edg-row"><span>Logged at</span><b>{{ exp.createdAt | date:'dd MMM yyyy, h:mm a' }}</b></div>
+        <div class="edg-row full"><span>Reason</span><p class="edg-reason">{{ exp.reason }}</p></div>
+        @if (exp.screenshotData) {
+          <div class="edg-row full">
+            <span>Receipt / Screenshot</span>
+            <img class="exp-screenshot" [src]="exp.screenshotData" alt="Receipt" (error)="hideImg($event)">
+          </div>
+        }
+      </div>
+
+      @if (activeTrip()?.isAdmin && !exp.isRejected) {
+        <div class="exp-detail-actions">
+          <button class="btn btn-danger" (click)="openRejectModal(exp)">🚫 Reject Entry</button>
+        </div>
+      }
+      @if (activeTrip()?.isAdmin && exp.isRejected) {
+        <div class="exp-detail-actions">
+          <button class="btn btn-secondary" (click)="restoreExpense(exp); closeExpenseDetail()">↩ Restore Entry</button>
+        </div>
+      }
+    </div>
+  </div>
+}
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- ── ADMIN REJECT MODAL ────────────────────────────────── -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+@if (showRejectModal()) {
+  <div class="modal-backdrop" (click)="showRejectModal.set(false)">
+    <div class="modal reject-modal glass" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>🚫 Reject Entry</h2>
+        <button class="btn-x" (click)="showRejectModal.set(false)">✕</button>
+      </div>
+      @if (rejectTargetExpense(); as exp) {
+        <div class="reject-exp-info">
+          <b>{{ exp.description }}</b> — {{ getCurrencySymbol(exp.currency) }}{{ exp.amount | number:'1.0-0' }}
+          <span class="by">by {{ exp.addedByDisplayName }}</span>
+        </div>
+      }
+      <div class="form-group">
+        <label class="form-label">Reason for rejection <span class="required">*</span></label>
+        <textarea class="form-input" [(ngModel)]="rejectReason" rows="3"
+          placeholder="Provide a clear reason. This will be visible to all members."></textarea>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="showRejectModal.set(false)">Cancel</button>
+        <button class="btn btn-danger" [disabled]="!rejectReason.trim() || rejectLoading()" (click)="submitReject()">
+          @if (rejectLoading()) { <span class="spinner"></span> } @else { 🚫 Reject }
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- ── CREATE TRIP MODAL ──────────────────────────────────── -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+@if (showCreateModal()) {
+  <div class="modal-backdrop" (click)="showCreateModal.set(false)">
+    <div class="modal create-modal glass" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>✈️ Create New Trip</h2>
+        <button class="btn-x" (click)="showCreateModal.set(false)">✕</button>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Trip Name <span class="required">*</span></label>
+        <input class="form-input" [(ngModel)]="createForm.name" placeholder="e.g. Goa Trip 2025">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Destination</label>
+        <input class="form-input" [(ngModel)]="createForm.destination" placeholder="e.g. Goa, India">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <input class="form-input" [(ngModel)]="createForm.description" placeholder="Optional description">
+      </div>
+      <div class="frow2">
+        <div class="form-group">
+          <label class="form-label">Budget <span class="required">*</span></label>
+          <input class="form-input" type="number" [(ngModel)]="createForm.budget" min="1" placeholder="0">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Currency</label>
+          <select class="form-input" [(ngModel)]="createForm.currency">
+            <option value="INR">₹ INR</option>
+            <option value="USD">$ USD</option>
+            <option value="EUR">€ EUR</option>
+          </select>
+        </div>
+      </div>
+      <div class="frow2">
+        <div class="form-group">
+          <label class="form-label">Start Date</label>
+          <input class="form-input" type="date" [(ngModel)]="createForm.startDate">
+        </div>
+        <div class="form-group">
+          <label class="form-label">End Date</label>
+          <input class="form-input" type="date" [(ngModel)]="createForm.endDate">
+        </div>
+      </div>
+      @if (createError()) { <div class="error-banner">{{ createError() }}</div> }
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="showCreateModal.set(false)">Cancel</button>
+        <button class="btn btn-primary" [disabled]="createLoading()" (click)="submitCreateTrip()">
+          @if (createLoading()) { <span class="spinner"></span> } @else { ✈️ Create Trip }
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- ── JOIN TRIP MODAL ────────────────────────────────────── -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+@if (showJoinModal()) {
+  <div class="modal-backdrop" (click)="showJoinModal.set(false)">
+    <div class="modal join-modal glass" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>🔗 Join a Trip</h2>
+        <button class="btn-x" (click)="showJoinModal.set(false)">✕</button>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Enter Trip Code</label>
+        <div class="code-input-row">
+          <input class="form-input code-input" [(ngModel)]="joinCode" placeholder="ABCD 1234"
+            (ngModelChange)="joinCode = $event.toUpperCase(); joinInfo.set(null); joinError.set('')"
+            maxlength="9" style="letter-spacing:0.2em; font-size:1.2rem; text-align:center;">
+          <button class="btn btn-primary" (click)="lookupJoinCode()" [disabled]="joinCode.length < 4">🔍</button>
+        </div>
+      </div>
+      @if (joinLoading()) { <div class="lookup-loading"><span class="spinner-sm"></span> Looking up trip...</div> }
+      @if (joinError()) { <div class="error-banner">{{ joinError() }}</div> }
+      @if (joinInfo(); as info) {
+        <div class="join-preview">
+          <div class="jp-icon">✈️</div>
+          <div class="jp-info">
+            <h3>{{ info.name }}</h3>
+            @if (info.destination) { <p>📍 {{ info.destination }}</p> }
+            <p>👑 Admin: {{ info.adminName }}</p>
+            <p>👥 {{ info.memberCount }} member(s) · 💰 {{ getCurrencySymbol(info.currency) }}{{ info.budget | number:'1.0-0' }}</p>
+          </div>
+          @if (!info.isActive) { <div class="error-banner">This trip is closed.</div> }
+        </div>
+      }
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="showJoinModal.set(false)">Cancel</button>
+        <button class="btn btn-primary" [disabled]="!joinInfo() || !joinInfo()?.isActive || joinLoading()" (click)="submitJoinTrip()">
+          @if (joinLoading()) { <span class="spinner"></span> } @else { 🤝 Join Trip }
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- ── ADD EXPENSE MODAL ──────────────────────────────────── -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+@if (showAddExpense()) {
+  <div class="modal-backdrop" (click)="showAddExpense.set(false)">
+    <div class="modal add-exp-modal glass" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>💳 Log a Spend</h2>
+        <button class="btn-x" (click)="showAddExpense.set(false)">✕</button>
+      </div>
+      <div class="category-picker">
+        @for (cat of CATEGORIES; track cat) {
+          <button class="cat-btn" [class.active]="expenseForm.category === cat"
+            [style.--cat-c]="getCategoryColor(cat)"
+            (click)="expenseForm.category = cat">
+            {{ getCategoryIcon(cat) }} {{ cat }}
+          </button>
+        }
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description <span class="required">*</span></label>
+        <input class="form-input" [(ngModel)]="expenseForm.description" placeholder="e.g. Lunch at Cafe">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Reason / Purpose <span class="required">*</span></label>
+        <textarea class="form-input" [(ngModel)]="expenseForm.reason" rows="2"
+          placeholder="Why was this spent? e.g. Team lunch after sightseeing"></textarea>
+      </div>
+      <div class="frow2">
+        <div class="form-group">
+          <label class="form-label">Amount <span class="required">*</span></label>
+          <input class="form-input" type="number" [(ngModel)]="expenseForm.amount" min="0.01" step="0.01" placeholder="0.00">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Date & Time</label>
+          <input class="form-input" type="datetime-local" [(ngModel)]="expenseForm.spentAt">
+        </div>
+      </div>
+      <!-- Image upload widget -->
+      <div class="form-group">
+        <label class="form-label">📸 Receipt / Screenshot <span class="optional">(optional, max 2MB)</span></label>
+        <div class="img-upload-area" [class.has-image]="imagePreview()">
+          @if (imagePreview()) {
+            <div class="img-preview-wrap">
+              <img [src]="imagePreview()" alt="Preview" class="img-preview">
+              <button type="button" class="btn btn-sm btn-danger img-clear" (click)="clearImage()">✕ Remove</button>
+            </div>
+          } @else {
+            <label for="img-upload" class="img-upload-label">
+              @if (imageUploading()) { <span class="spinner-sm"></span> Processing... }
+              @else { 📷 Click to upload image }
+            </label>
+            <input id="img-upload" type="file" accept="image/*" (change)="onImageSelected($event)" style="display:none">
+          }
+        </div>
+      </div>
+      @if (expenseError()) { <div class="error-banner">{{ expenseError() }}</div> }
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="showAddExpense.set(false)">Cancel</button>
+        <button class="btn btn-primary" [disabled]="expenseLoading()" (click)="submitExpense()">
+          @if (expenseLoading()) { <span class="spinner"></span> } @else { ✅ Log Spend }
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- ── SHARE / QR MODAL ───────────────────────────────────── -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+@if (showShareModal() && activeTrip(); as trip) {
+  <div class="modal-backdrop" (click)="showShareModal.set(false)">
+    <div class="modal share-modal glass" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>📤 Invite to {{ trip.name }}</h2>
+        <button class="btn-x" (click)="showShareModal.set(false)">✕</button>
+      </div>
+      <p class="share-sub">Share this QR code or trip code with friends</p>
+      <div class="qr-wrapper">
+        <img class="trip-qr" [src]="trip.qrCodeUrl" alt="Trip QR Code">
+      </div>
+      <div class="trip-code-display">
+        <span class="big-code">{{ formatCode(trip.tripCode) }}</span>
+        <button class="btn btn-secondary" (click)="copyCode()">
+          {{ codeCopied() ? '✅ Copied!' : '📋 Copy' }}
+        </button>
+      </div>
+      <p class="share-hint">Members go to <b>Trips → Join Trip</b> and enter this code</p>
+    </div>
+  </div>
+}
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- ── UPDATE BUDGET MODAL ───────────────────────────────── -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+@if (showBudgetModal()) {
+  <div class="modal-backdrop" (click)="showBudgetModal.set(false)">
+    <div class="modal budget-modal glass" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>💰 Update Budget</h2>
+        <button class="btn-x" (click)="showBudgetModal.set(false)">✕</button>
+      </div>
+      <div class="form-group">
+        <label class="form-label">New Budget Amount</label>
+        <input class="form-input" type="number" [(ngModel)]="newBudget" min="1" step="100">
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="showBudgetModal.set(false)">Cancel</button>
+        <button class="btn btn-primary" [disabled]="newBudget <= 0 || budgetLoading()" (click)="submitBudget()">
+          @if (budgetLoading()) { <span class="spinner"></span> } @else { 💾 Save }
+        </button>
+      </div>
+    </div>
+  </div>
+}

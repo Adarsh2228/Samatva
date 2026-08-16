@@ -1,0 +1,570 @@
+<!-- ── Navbar ─────────────────────────────────────────────────── -->
+<nav class="navbar glass">
+  <div class="nav-inner container">
+    <a routerLink="/dashboard" class="back-btn">← Back</a>
+    <span class="nav-title" *ngIf="group() as g">{{ g.name }}</span>
+    <button class="btn btn-icon btn-secondary" (click)="toggleTheme()">{{ isDark() ? '☀️' : '🌙' }}</button>
+  </div>
+</nav>
+
+<main class="page container" *ngIf="group() as g">
+  <header class="group-header">
+    <h1>{{ g.name }}</h1>
+    <div class="header-actions">
+      <button class="btn btn-secondary btn-sm" (click)="openInviteModal()">👥 Invite</button>
+      <button class="btn btn-primary btn-sm" (click)="showAddExpense.set(true)">＋ Expense</button>
+    </div>
+  </header>
+
+  <div class="members-strip">
+    @for (m of g.members; track m.userId) {
+      <div class="member-chip"><div class="avatar avatar-sm">{{ getInitials(m.displayName) }}</div><span>{{ m.displayName }}</span></div>
+    }
+    <button class="member-chip add-chip" (click)="openInviteModal()">＋</button>
+  </div>
+
+  <!-- Streak Banner -->
+  @if (currentStreak() > 0) {
+    <div class="streak-banner">
+      <div class="streak-fire">🔥</div>
+      <div class="streak-info">
+        <span class="streak-count">{{ currentStreak() }}-day streak!</span>
+        <span class="streak-msg">{{ streakMessage() }}</span>
+      </div>
+      <div class="streak-best">Best: {{ longestStreak() }}d</div>
+    </div>
+  }
+
+  <div class="tab-bar">
+    <button class="tab" [class.active]="activeTab() === 'expenses'" (click)="onTabChange('expenses')">💳 Expenses</button>
+    <button class="tab" [class.active]="activeTab() === 'balances'" (click)="onTabChange('balances')">📊 Balances</button>
+    <button class="tab" [class.active]="activeTab() === 'settle'" (click)="onTabChange('settle')">🤝 Settle</button>
+    <button class="tab" [class.active]="activeTab() === 'insights'" (click)="onTabChange('insights')">📈 Insights</button>
+  </div>
+
+  <!-- ── Tab: Expenses ─────────────────────────────────────────── -->
+  @if (activeTab() === 'expenses') {
+    @if (isLoading()) {
+      <div class="expense-list">@for (i of [1,2,3]; track i) { <div class="card expense-skel"><div class="skeleton" style="width:40px;height:40px;border-radius:10px"></div><div style="flex:1"><div class="skeleton" style="width:60%;height:16px"></div><div class="skeleton" style="width:30%;height:12px;margin-top:6px"></div></div></div> }</div>
+    }
+    @if (!isLoading() && expenses().length === 0) {
+      <div class="empty-state"><p class="empty-icon">🧾</p><h3>No expenses yet</h3><p>Use the AI assistant or add manually!</p>
+        <button class="btn btn-primary" (click)="showAddExpense.set(true)">＋ Add First Expense</button>
+      </div>
+    }
+    @if (!isLoading() && expenses().length > 0) {
+      <div class="expense-list">
+        @for (exp of expenses(); track exp.id) {
+          <div class="card expense-item">
+            <div class="expense-icon">{{ getCategoryIcon(exp.category) }}</div>
+            <div class="expense-details">
+              <h4>{{ exp.description }} @if (exp.isAiGenerated) { <span class="badge" style="font-size:10px">🤖</span> }</h4>
+              <p class="expense-meta">{{ exp.paidByDisplayName }} · {{ exp.expenseDate | date:'MMM d' }} · {{ exp.splitType }}</p>
+            </div>
+            <div class="expense-amount"><b>{{ getCurrencySymbol(exp.currency) }}{{ exp.amount | number:'1.0-0' }}</b></div>
+            <!-- Only show delete if I created the expense -->
+            @if (isMyExpense(exp)) {
+              <button class="btn-x" (click)="deleteExpense(exp.id)" title="Only you can delete this">×</button>
+            } @else {
+              <span class="owner-lock" title="Only {{exp.paidByDisplayName}} can edit/delete">🔒</span>
+            }
+          </div>
+        }
+      </div>
+    }
+  }
+
+  <!-- ── Tab: Balances ─────────────────────────────────────────── -->
+  @if (activeTab() === 'balances') {
+    <div class="balances-grid">
+      @for (b of balances(); track b.userId) {
+        <div class="card balance-card" [class.pos]="b.netBalance > 0" [class.neg]="b.netBalance < 0">
+          <div class="avatar">{{ getInitials(b.displayName) }}</div>
+          <h4>{{ b.displayName }}</h4>
+          <p [class.text-success]="b.netBalance > 0" [class.text-danger]="b.netBalance < 0">
+            {{ b.netBalance >= 0 ? 'gets back' : 'owes' }}
+            <b>{{ getCurrencySymbol(b.currency) }}{{ (b.netBalance < 0 ? -b.netBalance : b.netBalance) | number:'1.0-0' }}</b>
+          </p>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- ── Tab: Settle Up ────────────────────────────────────────── -->
+  @if (activeTab() === 'settle') {
+    @if (debts().length === 0) { <div class="empty-state"><p class="empty-icon">✅</p><h3>All settled!</h3><p>No pending debts in this group.</p></div> }
+    <div class="debts-list">
+      @for (d of debts(); track d.fromUserId + d.toUserId) {
+        <div class="card debt-card">
+          <div class="debt-left">
+            <div class="avatar avatar-sm">{{ getInitials(d.fromDisplayName) }}</div>
+            <div class="debt-info">
+              <span class="debt-from">{{ d.fromDisplayName }}</span>
+              <span class="debt-arrow">pays →</span>
+              <span class="debt-to">{{ d.toDisplayName }}</span>
+            </div>
+            <div class="avatar avatar-sm">{{ getInitials(d.toDisplayName) }}</div>
+          </div>
+          <div class="debt-right">
+            <b class="debt-amt">{{ getCurrencySymbol(d.currency) }}{{ d.amount | number:'1.0-0' }}</b>
+            <div class="debt-actions">
+              <button class="btn btn-sm btn-primary" (click)="openSettleModal(d)" title="Pay via UPI">💳 Settle Up</button>
+              <button class="btn btn-sm btn-secondary" (click)="nudgeUser(d)" title="Remind">🔔 Nudge</button>
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- ── Tab: Insights ────────────────────────────────────────── -->
+  @if (activeTab() === 'insights') {
+    @if (analyticsLoading()) {
+      <div class="empty-state"><span class="spinner"></span><p>Loading insights...</p></div>
+    }
+    @if (!analyticsLoading() && analytics(); as a) {
+      <div class="insights-grid">
+        <!-- Summary Cards -->
+        <div class="insight-cards">
+          <div class="insight-card gradient-card">
+            <span class="ic-icon">💰</span>
+            <span class="ic-value">{{ getCurrencySymbol(a.currency) }}{{ a.totalSpent | number:'1.0-0' }}</span>
+            <span class="ic-label">Total Spent</span>
+          </div>
+          <div class="insight-card">
+            <span class="ic-icon">📊</span>
+            <span class="ic-value">{{ a.totalTransactions }}</span>
+            <span class="ic-label">Transactions</span>
+          </div>
+          <div class="insight-card">
+            <span class="ic-icon">📈</span>
+            <span class="ic-value">{{ getCurrencySymbol(a.currency) }}{{ a.averageExpense | number:'1.0-0' }}</span>
+            <span class="ic-label">Avg Expense</span>
+          </div>
+          <div class="insight-card">
+            <span class="ic-icon">🏷️</span>
+            <span class="ic-value">{{ getCategoryIcon(a.topCategory) }}</span>
+            <span class="ic-label">Top: {{ a.topCategory }}</span>
+          </div>
+        </div>
+
+        <!-- Category Breakdown -->
+        <div class="card insight-section">
+          <h3>🏷️ Category Breakdown</h3>
+          <div class="cat-bars">
+            @for (cat of a.categoryBreakdown; track cat.category) {
+              <div class="cat-row">
+                <div class="cat-label">
+                  <span>{{ getCategoryIcon(cat.category) }} {{ cat.category }}</span>
+                  <span class="cat-amount">{{ getCurrencySymbol(a.currency) }}{{ cat.amount | number:'1.0-0' }}</span>
+                </div>
+                <div class="cat-bar-track">
+                  <div class="cat-bar-fill" [style.width.%]="cat.percentage" [style.background]="getCategoryColor(cat.category)"></div>
+                </div>
+                <span class="cat-pct">{{ cat.percentage }}%</span>
+              </div>
+            }
+          </div>
+        </div>
+
+        <!-- Daily Spending Heatmap -->
+        <div class="card insight-section">
+          <h3>📅 30-Day Spending</h3>
+          <div class="daily-chart">
+            @for (day of a.dailySpending; track day.date) {
+              <div class="day-bar-wrap" [title]="day.date + ': ' + getCurrencySymbol(a.currency) + (day.amount | number:'1.0-0')">
+                <div class="day-bar" [style.height.%]="day.amount > 0 ? (day.amount / getMaxDailySpend() * 100) : 2"
+                  [class.has-spend]="day.amount > 0"></div>
+              </div>
+            }
+          </div>
+          <div class="daily-labels"><span>30 days ago</span><span>Today</span></div>
+        </div>
+
+        <!-- Member Leaderboard -->
+        <div class="card insight-section">
+          <h3>👥 Member Leaderboard</h3>
+          <div class="member-board">
+            @for (m of a.memberSpending; track m.userId; let i = $index) {
+              <div class="mb-row">
+                <span class="mb-rank">{{ i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '#' + (i+1) }}</span>
+                <div class="avatar avatar-sm">{{ getInitials(m.displayName) }}</div>
+                <div class="mb-info">
+                  <span class="mb-name">{{ m.displayName }}</span>
+                  <span class="mb-paid">Paid: {{ getCurrencySymbol(a.currency) }}{{ m.totalPaid | number:'1.0-0' }}</span>
+                </div>
+                <span class="mb-net" [class.text-success]="m.netBalance > 0" [class.text-danger]="m.netBalance < 0">
+                  {{ m.netBalance >= 0 ? '+' : '' }}{{ getCurrencySymbol(a.currency) }}{{ m.netBalance | number:'1.0-0' }}
+                </span>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+    }
+    @if (!analyticsLoading() && !analytics()) {
+      <div class="empty-state"><p class="empty-icon">📈</p><h3>No data yet</h3><p>Add expenses to see insights!</p></div>
+    }
+  }
+</main>
+
+
+<!-- ── Floating AI Chat Button ──────────────────────────────── -->
+<button class="fab-ai" (click)="showAiChat.set(!showAiChat())">@if (showAiChat()) { ✕ } @else { 🤖 }</button>
+
+<!-- ── AI Chat Panel (Smart — answers questions + creates expenses) -->
+@if (showAiChat()) {
+<div class="ai-chat glass">
+  <div class="chat-head"><h3>🤖 Smart Assistant</h3><small>Ask questions or log expenses!</small></div>
+  <div class="chat-body">
+    @if (chatMessages().length === 0) {
+      <div class="chat-empty">
+        <p>👋 I can answer questions AND log expenses!</p>
+        <div class="chips">
+          <button class="chip" (click)="chatInput='How much do I owe?';sendChatMessage()">💸 How much do I owe?</button>
+          <button class="chip" (click)="chatInput='Who owes me?';sendChatMessage()">👥 Who owes me?</button>
+          <button class="chip" (click)="chatInput='Total expenses';sendChatMessage()">📊 Total expenses</button>
+          <button class="chip" (click)="chatInput='I paid 500 for dinner';sendChatMessage()">🍕 Log: ₹500 dinner</button>
+          <button class="chip" (click)="chatInput='help';sendChatMessage()">❓ What can you do?</button>
+        </div>
+      </div>
+    }
+    @for (msg of chatMessages(); track msg.id) {
+      <div class="msg" [class.user]="msg.role==='user'" [class.bot]="msg.role==='assistant'">
+        @if (msg.isLoading) { <span class="dots"><i></i><i></i><i></i></span> } @else { <span [innerHTML]="formatBotMessage(msg.content)"></span> }
+      </div>
+    }
+  </div>
+  <form class="chat-bar" (ngSubmit)="sendChatMessage()">
+    <input class="form-input" [(ngModel)]="chatInput" name="c" placeholder="Ask a question or log expense..." [disabled]="isChatLoading()">
+    <button class="btn btn-primary btn-icon" type="submit" [disabled]="!chatInput.trim()">➤</button>
+  </form>
+</div>
+}
+
+<!-- ── Add Expense Modal (All Split Methods) ──────────────────── -->
+@if (showAddExpense()) {
+<div class="modal-backdrop" (click)="showAddExpense.set(false)"><div class="modal expense-modal glass" (click)="$event.stopPropagation()">
+  <h2>💰 Add Expense</h2>
+  <form (ngSubmit)="addExpense()" class="mform">
+    <div class="form-group"><label>Description</label><input class="form-input" [(ngModel)]="newExpense.description" name="desc" placeholder="e.g., Dinner at restaurant" required></div>
+    <div class="frow">
+      <div class="form-group"><label>Amount (₹)</label><input class="form-input" type="number" [(ngModel)]="newExpense.amount" name="amt" placeholder="0.00" required min="0.01" step="0.01" (ngModelChange)="onAmountChange()"></div>
+      <div class="form-group"><label>Category</label>
+        <select class="form-input" [(ngModel)]="newExpense.category" name="ecat">
+          <option value="General">📋 General</option><option value="Food">🍕 Food</option><option value="Transport">🚗 Transport</option><option value="Entertainment">🎬 Entertainment</option><option value="Shopping">🛍️ Shopping</option><option value="Utilities">💡 Utilities</option><option value="Rent">🏠 Rent</option><option value="Travel">✈️ Travel</option><option value="Groceries">🥬 Groceries</option><option value="Other">📦 Other</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group"><label>Split Method</label>
+      <div class="split-selector">
+        <button type="button" class="split-opt" [class.active]="newExpense.splitType === 'Equal'" (click)="newExpense.splitType = 'Equal'">⚖️ Equal</button>
+        <button type="button" class="split-opt" [class.active]="newExpense.splitType === 'Exact'" (click)="newExpense.splitType = 'Exact'; initSplitValues()">💵 Exact</button>
+        <button type="button" class="split-opt" [class.active]="newExpense.splitType === 'Percentage'" (click)="newExpense.splitType = 'Percentage'; initSplitValues()">📊 %</button>
+        <button type="button" class="split-opt" [class.active]="newExpense.splitType === 'Shares'" (click)="newExpense.splitType = 'Shares'; initSplitValues()">🔢 Shares</button>
+      </div>
+    </div>
+    @if (newExpense.splitType === 'Equal' && group()?.members?.length && newExpense.amount) {
+      <div class="split-preview"><p>⚖️ ₹{{ (newExpense.amount / group()!.members.length) | number:'1.2-2' }} each × {{ group()!.members.length }} members</p></div>
+    }
+    @if (newExpense.splitType !== 'Equal') {
+      <div class="split-members-list">
+        @for (m of group()?.members || []; track m.userId) {
+          <div class="split-member-row">
+            <div class="avatar avatar-sm">{{ getInitials(m.displayName) }}</div>
+            <span class="member-name">{{ m.displayName }}</span>
+            <input class="form-input split-input" type="number" [(ngModel)]="splitValues[m.userId]" [name]="'sv_'+m.userId" [placeholder]="newExpense.splitType === 'Shares' ? '1' : '0'" min="0">
+            @if (newExpense.splitType === 'Percentage' && newExpense.amount && splitValues[m.userId]) { <span class="pct-amount">= ₹{{ (newExpense.amount * splitValues[m.userId] / 100) | number:'1.0-0' }}</span> }
+            @if (newExpense.splitType === 'Shares' && newExpense.amount && getShareTotal() > 0 && splitValues[m.userId]) { <span class="pct-amount">= ₹{{ (newExpense.amount * splitValues[m.userId] / getShareTotal()) | number:'1.0-0' }}</span> }
+          </div>
+        }
+        <div class="split-total" [class.error]="!isSplitValid()">
+          @if (newExpense.splitType === 'Exact') { Total: ₹{{ getSplitTotal() | number:'1.2-2' }} @if (newExpense.amount && getSplitTotal() !== newExpense.amount) { <span class="split-diff">(need ₹{{ newExpense.amount }})</span> } }
+          @if (newExpense.splitType === 'Percentage') { {{ getPercentTotal() }}% @if (getPercentTotal() !== 100) { <span class="split-diff">(need 100%)</span> } }
+          @if (newExpense.splitType === 'Shares') { {{ getShareTotal() }} shares }
+        </div>
+      </div>
+    }
+    <div class="modal-actions"><button type="button" class="btn btn-secondary" (click)="showAddExpense.set(false)">Cancel</button><button type="submit" class="btn btn-primary" [disabled]="!canSubmitExpense()">Add Expense</button></div>
+  </form>
+</div></div>
+}
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<!-- ── MEGA INVITE MODAL (Multi-Channel + Code) ──────────────── -->
+<!-- ════════════════════════════════════════════════════════════ -->
+@if (showInviteModal()) {
+<div class="modal-backdrop" (click)="showInviteModal.set(false)">
+<div class="modal invite-modal glass" (click)="$event.stopPropagation()">
+  <div class="invite-header">
+    <h2>👥 Invite Members</h2>
+    <p class="invite-subtitle">Share your group with friends using any method</p>
+  </div>
+
+  <div class="invite-tabs">
+    <button class="inv-tab" [class.active]="inviteTab() === 'link'" (click)="inviteTab.set('link')">🔗 Link</button>
+    <button class="inv-tab" [class.active]="inviteTab() === 'email'" (click)="inviteTab.set('email')">📧 Email</button>
+    <button class="inv-tab" [class.active]="inviteTab() === 'qr'" (click)="inviteTab.set('qr')">📱 QR</button>
+    <button class="inv-tab" [class.active]="inviteTab() === 'code'" (click)="inviteTab.set('code')">🔢 Code</button>
+  </div>
+
+  <!-- Tab: Share Link -->
+  @if (inviteTab() === 'link') {
+    @if (inviteLoading() && !inviteData()) {
+      <div class="invite-loading"><span class="spinner"></span> Generating invite link...</div>
+    }
+    @if (inviteData(); as data) {
+      <div class="invite-link-section">
+        <div class="link-box">
+          <input class="form-input link-input" [value]="data.inviteUrl" readonly (click)="copyInviteLink()">
+          <button class="btn btn-primary btn-sm copy-btn" (click)="copyInviteLink()">{{ linkCopied() ? '✅ Copied!' : '📋 Copy' }}</button>
+        </div>
+        <p class="link-meta">Expires in 7 days · Invited by {{ data.inviterName }}</p>
+        <div class="share-grid">
+          <button class="share-btn whatsapp" (click)="shareViaWhatsApp()"><span class="share-icon">💬</span><span>WhatsApp</span></button>
+          <button class="share-btn telegram" (click)="shareViaTelegram()"><span class="share-icon">✈️</span><span>Telegram</span></button>
+          <button class="share-btn sms" (click)="shareViaSMS()"><span class="share-icon">💌</span><span>SMS</span></button>
+          <button class="share-btn email-share" (click)="shareViaEmail()"><span class="share-icon">📧</span><span>Email</span></button>
+          @if (hasNativeShare()) {
+            <button class="share-btn native" (click)="nativeShare()"><span class="share-icon">📤</span><span>More...</span></button>
+          }
+        </div>
+      </div>
+    }
+  }
+
+  <!-- Tab: By Email -->
+  @if (inviteTab() === 'email') {
+    <div class="invite-email-section">
+      <p class="email-desc">Add a registered user directly by their email address.</p>
+      <form (ngSubmit)="addMemberByEmail()" class="email-form">
+        <div class="email-input-row">
+          <input class="form-input" type="email" [(ngModel)]="inviteEmail" name="invEmail" placeholder="friend@email.com" required>
+          <button class="btn btn-primary" type="submit" [disabled]="!inviteEmail.trim() || inviteLoading()">
+            @if (inviteLoading()) { <span class="spinner-sm"></span> } @else { Add }
+          </button>
+        </div>
+      </form>
+      @if (inviteMsg()) {
+        <div class="invite-feedback" [class.success]="inviteMsgType() === 'success'" [class.error]="inviteMsgType() === 'error'">{{ inviteMsg() }}</div>
+      }
+      <div class="email-tip"><p>💡 <b>Tip:</b> If they haven't signed up yet, use the <b>Share Link</b> or <b>Code</b> tab!</p></div>
+    </div>
+  }
+
+  <!-- Tab: QR Code -->
+  @if (inviteTab() === 'qr') {
+    <div class="invite-qr-section">
+      @if (inviteData(); as data) {
+        <div class="qr-container">
+          <img class="qr-image" [src]="'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=' + encodeURI(data.inviteUrl)" alt="QR Code">
+        </div>
+        <p class="qr-hint">📱 Ask your friend to scan this with their camera</p>
+        <p class="qr-group-name">Group: <b>{{ group()?.name }}</b></p>
+      } @else {
+        <div class="invite-loading"><span class="spinner"></span> Generating QR code...</div>
+      }
+    </div>
+  }
+
+  <!-- Tab: Unique Code (NEW) -->
+  @if (inviteTab() === 'code') {
+    <div class="invite-code-section">
+      <p class="code-desc">Generate a 6-character code that registered users can enter to join instantly.</p>
+      @if (!inviteCode()) {
+        <button class="btn btn-primary btn-block" (click)="generateCode()" [disabled]="inviteLoading()">
+          @if (inviteLoading()) { <span class="spinner-sm"></span> Generating... } @else { 🔑 Generate Invite Code }
+        </button>
+      }
+      @if (inviteCode()) {
+        <div class="code-display">
+          <span class="big-code">{{ inviteCode() }}</span>
+          <button class="btn btn-primary btn-sm" (click)="copyCode()">{{ codeCopied() ? '✅ Copied!' : '📋 Copy' }}</button>
+        </div>
+        <p class="code-meta">Valid for 24 hours · Share this code with registered users</p>
+        <div class="code-instruction">
+          <p>📱 Tell your friend:</p>
+          <p class="code-steps">1. Open SplitWise Pro → Dashboard<br>2. Click "Join Group" → Enter code <b>{{ inviteCode() }}</b><br>3. They're in! 🎉</p>
+        </div>
+        <button class="btn btn-secondary btn-sm" (click)="generateCode()">🔄 Generate New Code</button>
+      }
+    </div>
+  }
+
+  <button class="btn btn-secondary close-invite" (click)="showInviteModal.set(false)">Close</button>
+</div>
+</div>
+}
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<!-- ── UPI PAYMENT MODAL (QR + Deep Link) ─────────────────── -->
+<!-- ════════════════════════════════════════════════════════════ -->
+@if (showUpiModal()) {
+<div class="modal-backdrop" (click)="closeUpiModal()">
+<div class="modal upi-modal glass" (click)="$event.stopPropagation()">
+  <div class="upi-header">
+    <h2>💳 UPI Payment</h2>
+    <button class="btn-x" (click)="closeUpiModal()">✕</button>
+  </div>
+
+  @if (upiLoading()) {
+    <div class="invite-loading"><span class="spinner"></span> Generating payment link...</div>
+  }
+
+  @if (!upiLoading() && upiData(); as upi) {
+    @if (upiPaymentRecorded()) {
+      <div class="upi-success">
+        <div class="upi-success-icon">✅</div>
+        <h3>Payment Recorded!</h3>
+        <p>Your settlement has been saved. The receiver will be notified.</p>
+        <button class="btn btn-primary" (click)="closeUpiModal()">Done</button>
+      </div>
+    } @else {
+      <div class="upi-pay-info">
+        <div class="upi-pay-row"><span>To:</span><b>{{ upi.payeeName }}</b></div>
+        <div class="upi-pay-row"><span>UPI ID:</span><code>{{ upi.payeeUpiId }}</code></div>
+        <div class="upi-pay-row"><span>Amount:</span><b class="upi-amount">₹{{ upi.amount | number:'1.2-2' }}</b></div>
+      </div>
+
+      <!-- Mobile: Show Pay Button -->
+      @if (isMobileDevice()) {
+        <div class="upi-mobile-section">
+          <button class="btn btn-primary btn-lg upi-pay-btn" (click)="openUpiApp()">
+            <span class="upi-btn-icon">📱</span> Pay ₹{{ upi.amount | number:'1.0-0' }} via UPI App
+          </button>
+          <p class="upi-hint">Opens your preferred UPI app (GPay, PhonePe, Paytm, etc.)</p>
+        </div>
+      }
+
+      <!-- Desktop: Show QR Code -->
+      @if (!isMobileDevice()) {
+        <div class="upi-qr-section">
+          <p class="upi-scan-label">📱 Scan with any UPI app to pay</p>
+          <div class="upi-qr-container">
+            <img class="upi-qr-img" [src]="upi.qrCodeUrl" alt="UPI QR Code">
+            <div class="upi-qr-overlay">
+              <span>₹{{ upi.amount | number:'1.0-0' }}</span>
+            </div>
+          </div>
+          <p class="upi-qr-hint">GPay · PhonePe · Paytm · BHIM · Any UPI App</p>
+        </div>
+      }
+
+      <!-- Record Payment -->
+      <div class="upi-record">
+        <p class="upi-record-label">After paying, record your payment:</p>
+        <div class="upi-txn-row">
+          <input class="form-input" [(ngModel)]="upiTxnId" placeholder="UPI Transaction ID (optional)">
+          <button class="btn btn-primary" (click)="recordUpiPayment()">✅ Mark as Paid</button>
+        </div>
+      </div>
+    }
+  }
+</div>
+</div>
+}
+
+<!-- ═══ Advanced Settlement Modal ═══════════════════════════════════════ -->
+@if (showSettleModal()) {
+  <div class="modal-backdrop" (click)="showSettleModal.set(false)">
+    <div class="modal settle-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>💸 Settle Up</h2>
+        <button class="btn-x" (click)="showSettleModal.set(false)">✕</button>
+      </div>
+
+      @if (settleLoading()) {
+        <div style="display:flex;justify-content:center;padding:40px">
+          <div class="spinner-lg"></div>
+        </div>
+      } @else if (settleBreakdown()) {
+        <!-- Amount Header -->
+        <div class="settle-amount-hero">
+          <div class="settle-to">You owe <strong>{{ settleBreakdown()!.receiverName }}</strong></div>
+          <div class="settle-total">₹{{ settleBreakdown()!.totalOwed | number:'1.2-2' }}</div>
+        </div>
+
+        <!-- Breakdown List -->
+        <div class="settle-breakdown">
+          <div class="breakdown-title">📋 Expense Breakdown</div>
+          @for (item of settleBreakdown()!.breakdown; track item.expenseId) {
+            <div class="breakdown-item">
+              <div class="bi-left">
+                <span class="bi-desc">{{ item.description }}</span>
+                <span class="bi-meta">{{ item.paidBy }} paid • {{ item.date | date:'dd MMM' }}</span>
+              </div>
+              <div class="bi-right">
+                <span class="bi-share">₹{{ item.yourShare | number:'1.2-2' }}</span>
+                <span class="bi-total">of ₹{{ item.totalAmount | number:'1.0-0' }}</span>
+              </div>
+            </div>
+          }
+          @if (settleBreakdown()!.breakdown.length === 0) {
+            <p style="color:var(--text-secondary);text-align:center;padding:16px">No expense breakdown available.</p>
+          }
+        </div>
+
+        <!-- UPI ID display -->
+        @if (settleBreakdown()!.receiverUpiId) {
+          <div class="upi-id-row">
+            <span class="upi-id-label">UPI ID:</span>
+            <span class="upi-id-val">{{ settleBreakdown()!.receiverUpiId }}</span>
+            <button class="btn btn-sm btn-ghost" (click)="copyUpiId()">📋 Copy</button>
+          </div>
+        }
+
+        <!-- Payment Tabs -->
+        <div class="pay-tabs">
+          <button class="pay-tab" [class.active]="activePayTab()==='upi'" (click)="activePayTab.set('upi')">📱 UPI App</button>
+          <button class="pay-tab" [class.active]="activePayTab()==='qr'" (click)="activePayTab.set('qr')">📷 QR Code</button>
+          <button class="pay-tab" [class.active]="activePayTab()==='whatsapp'" (click)="activePayTab.set('whatsapp')">💬 WhatsApp</button>
+        </div>
+
+        <!-- Tab Content -->
+        @if (activePayTab() === 'upi') {
+          <div class="pay-content">
+            @if (settleBreakdown()!.upiIntentUrl) {
+              <p class="pay-hint">Opens GPay / PhonePe / Paytm / BHIM with amount pre-filled.</p>
+              <button class="btn btn-primary btn-lg" style="width:100%" (click)="openUpiIntentApp()">📱 Pay ₹{{ settleBreakdown()!.totalOwed | number:'1.2-2' }} via UPI App</button>
+            } @else {
+              <div class="no-upi-msg">⚠️ {{ settleBreakdown()!.receiverName }} hasn't set a UPI ID yet. Ask them to update their profile.</div>
+            }
+          </div>
+        }
+        @if (activePayTab() === 'qr') {
+          <div class="pay-content qr-content">
+            @if (settleBreakdown()!.qrCodeUrl) {
+              <p class="pay-hint">Scan with any UPI app — GPay, PhonePe, Paytm, BHIM.</p>
+              <div class="qr-wrap">
+                <img [src]="settleBreakdown()!.qrCodeUrl" alt="UPI QR Code" class="settle-qr" (load)="qrLoaded.set(true)">
+                @if (!qrLoaded()) { <div class="qr-loading">Loading QR...</div> }
+              </div>
+              <p class="qr-sub">Amount ₹{{ settleBreakdown()!.totalOwed | number:'1.2-2' }} is pre-filled when scanned</p>
+            } @else {
+              <div class="no-upi-msg">⚠️ QR not available — receiver needs to set a UPI ID.</div>
+            }
+          </div>
+        }
+        @if (activePayTab() === 'whatsapp') {
+          <div class="pay-content">
+            @if (settleBreakdown()!.whatsAppUrl) {
+              <p class="pay-hint">Opens WhatsApp with a pre-filled payment message. Pay via WhatsApp Pay.</p>
+              <button class="btn btn-lg" style="width:100%;background:#25D366;color:#fff" (click)="openWhatsApp()">💬 Pay via WhatsApp</button>
+            } @else {
+              <div class="no-upi-msg">⚠️ {{ settleBreakdown()!.receiverName }} hasn't added a phone number.</div>
+            }
+          </div>
+        }
+
+        <!-- Record Settlement -->
+        <div class="settle-footer">
+          <p class="settle-note">After paying, record the settlement to update balances.</p>
+          <button class="btn btn-primary" style="width:100%" (click)="showSettleModal.set(false); activeTab.set('settle')">
+            ✅ Mark as Settled
+          </button>
+        </div>
+      }
+    </div>
+  </div>
+}
+

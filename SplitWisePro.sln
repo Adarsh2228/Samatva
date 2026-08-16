@@ -1,0 +1,62 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SplitWisePro.API", "SplitWisePro.API\SplitWisePro.API.csproj", "{79F562F1-1E55-47C8-95C2-2B94B8CE8DF0}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SplitWisePro.Core", "SplitWisePro.Core\SplitWisePro.Core.csproj", "{5C875840-4592-43DA-A1A2-E39BEA982FAA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SplitWisePro.Infrastructure", "SplitWisePro.Infrastructure\SplitWisePro.Infrastructure.csproj", "{64815E42-086A-40AD-9EE5-C2AE9B8B3844}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
+		Release|Any CPU = Release|Any CPU
+		Release|x64 = Release|x64
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{79F562F1-1E55-47C8-95C2-2B94B8CE8DF0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{79F562F1-1E55-47C8-95C2-2B94B8CE8DF0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{79F562F1-1E55-47C8-95C2-2B94B8CE8DF0}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{79F562F1-1E55-47C8-95C2-2B94B8CE8DF0}.Debug|x64.Build.0 = Debug|Any CPU
+		{79F562F1-1E55-47C8-95C2-2B94B8CE8DF0}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{79F562F1-1E55-47C8-95C2-2B94B8CE8DF0}.Debug|x86.Build.0 = Debug|Any CPU
+		{79F562F1-1E55-47C8-95C2-2B94B8CE8DF0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{79F562F1-1E55-47C8-95C2-2B94B8CE8DF0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{79F562F1-1E55-47C8-95C2-2B94B8CE8DF0}.Release|x64.ActiveCfg = Release|Any CPU
+		{79F562F1-1E55-47C8-95C2-2B94B8CE8DF0}.Release|x64.Build.0 = Release|Any CPU
+		{79F562F1-1E55-47C8-95C2-2B94B8CE8DF0}.Release|x86.ActiveCfg = Release|Any CPU
+		{79F562F1-1E55-47C8-95C2-2B94B8CE8DF0}.Release|x86.Build.0 = Release|Any CPU
+		{5C875840-4592-43DA-A1A2-E39BEA982FAA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5C875840-4592-43DA-A1A2-E39BEA982FAA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5C875840-4592-43DA-A1A2-E39BEA982FAA}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{5C875840-4592-43DA-A1A2-E39BEA982FAA}.Debug|x64.Build.0 = Debug|Any CPU
+		{5C875840-4592-43DA-A1A2-E39BEA982FAA}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{5C875840-4592-43DA-A1A2-E39BEA982FAA}.Debug|x86.Build.0 = Debug|Any CPU
+		{5C875840-4592-43DA-A1A2-E39BEA982FAA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5C875840-4592-43DA-A1A2-E39BEA982FAA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5C875840-4592-43DA-A1A2-E39BEA982FAA}.Release|x64.ActiveCfg = Release|Any CPU
+		{5C875840-4592-43DA-A1A2-E39BEA982FAA}.Release|x64.Build.0 = Release|Any CPU
+		{5C875840-4592-43DA-A1A2-E39BEA982FAA}.Release|x86.ActiveCfg = Release|Any CPU
+		{5C875840-4592-43DA-A1A2-E39BEA982FAA}.Release|x86.Build.0 = Release|Any CPU
+		{64815E42-086A-40AD-9EE5-C2AE9B8B3844}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{64815E42-086A-40AD-9EE5-C2AE9B8B3844}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{64815E42-086A-40AD-9EE5-C2AE9B8B3844}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{64815E42-086A-40AD-9EE5-C2AE9B8B3844}.Debug|x64.Build.0 = Debug|Any CPU
+		{64815E42-086A-40AD-9EE5-C2AE9B8B3844}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{64815E42-086A-40AD-9EE5-C2AE9B8B3844}.Debug|x86.Build.0 = Debug|Any CPU
+		{64815E42-086A-40AD-9EE5-C2AE9B8B3844}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{64815E42-086A-40AD-9EE5-C2AE9B8B3844}.Release|Any CPU.Build.0 = Release|Any CPU
+		{64815E42-086A-40AD-9EE5-C2AE9B8B3844}.Release|x64.ActiveCfg = Release|Any CPU
+		{64815E42-086A-40AD-9EE5-C2AE9B8B3844}.Release|x64.Build.0 = Release|Any CPU
+		{64815E42-086A-40AD-9EE5-C2AE9B8B3844}.Release|x86.ActiveCfg = Release|Any CPU
+		{64815E42-086A-40AD-9EE5-C2AE9B8B3844}.Release|x86.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

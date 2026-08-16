@@ -1,0 +1,59 @@
+# Render.com auto-deploy configuration
+# Docs: https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: splitwisepro-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    region: singapore  # Closest to India
+    healthCheckPath: /api/health
+
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ASPNETCORE_URLS
+        value: http://+:10000
+
+      # ── JWT (set these in Render dashboard) ──────────────────────
+      - key: JwtSettings__SecretKey
+        sync: false   # Must be set manually in Render dashboard
+      - key: JwtSettings__Issuer
+        value: SplitWisePro.API
+      - key: JwtSettings__Audience
+        value: SplitWisePro.Client
+      - key: JwtSettings__AccessTokenExpirationMinutes
+        value: "30"
+      - key: JwtSettings__RefreshTokenExpirationDays
+        value: "7"
+
+      # ── Database (set after creating Render PostgreSQL) ───────────
+      - key: ConnectionStrings__DefaultConnection
+        sync: false   # Must be set manually in Render dashboard
+
+      # ── Email / Brevo SMTP (set in Render dashboard) ─────────────
+      - key: Email__SmtpHost
+        value: smtp-relay.brevo.com
+      - key: Email__SmtpPort
+        value: "587"
+      - key: Email__FromName
+        value: SplitWise Pro
+      - key: Email__From
+        sync: false
+      - key: Email__Username
+        sync: false
+      - key: Email__Password
+        sync: false
+
+      # ── CORS (update after Vercel deployment) ────────────────────
+      - key: Cors__AllowedOrigins__0
+        value: https://splitwisepro.vercel.app
+      - key: Cors__AllowedOrigins__1
+        value: http://localhost:4200
+
+databases:
+  - name: splitwisepro-db
+    plan: free
+    databaseName: splitwisepro
+    user: splitwisepro_user

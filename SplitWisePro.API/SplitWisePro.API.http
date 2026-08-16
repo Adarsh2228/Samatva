@@ -1,0 +1,6 @@
+@SplitWisePro.API_HostAddress = http://localhost:5208
+
+GET {{SplitWisePro.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

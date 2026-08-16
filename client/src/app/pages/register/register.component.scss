@@ -1,0 +1,8 @@
+@use '../../pages/login/login.component.scss';
+
+.form-row {
+  display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-md);
+}
+@media (max-width: 480px) {
+  .form-row { grid-template-columns: 1fr; }
+}
