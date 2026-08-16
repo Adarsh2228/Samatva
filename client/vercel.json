@@ -1,0 +1,12 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist/splitwise-pro-client/browser",
+  "installCommand": "npm install",
+  "framework": null,
+  "rewrites": [
+    {
+      "source": "/((?!assets|favicon.ico).*)",
+      "destination": "/index.html"
+    }
+  ]
+}

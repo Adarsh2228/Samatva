@@ -13,7 +13,7 @@ import { AuthService } from '../../services/auth.service';
       <div class="auth-bg"><div class="orb orb-1"></div><div class="orb orb-2"></div><div class="orb orb-3"></div></div>
       <div class="auth-card glass">
         <div class="auth-header">
-          <div class="logo"><span class="logo-icon">💸</span><h1>SplitWise <span class="gradient-text">Pro</span></h1></div>
+          <div class="logo"><span class="logo-icon">⚖️</span><h1>Sama<span class="gradient-text">tva</span></h1></div>
           <p class="subtitle">Create your account — it's free!</p>
         </div>
         <form (ngSubmit)="onRegister()" class="auth-form">

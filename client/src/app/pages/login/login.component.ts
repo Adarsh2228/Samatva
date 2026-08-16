@@ -18,8 +18,8 @@ import { AuthService } from '../../services/auth.service';
       <div class="auth-card glass">
         <div class="auth-header">
           <div class="logo">
-            <span class="logo-icon">💸</span>
-            <h1>SplitWise <span class="gradient-text">Pro</span></h1>
+            <span class="logo-icon">⚖️</span>
+            <h1>Sama<span class="gradient-text">tva</span></h1>
           </div>
           <p class="subtitle">Welcome back! Sign in to manage your expenses.</p>
         </div>

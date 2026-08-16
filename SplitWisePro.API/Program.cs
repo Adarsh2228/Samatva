@@ -161,7 +161,8 @@ if (app.Environment.IsDevelopment())
     app.UseDeveloperExceptionPage();
 }
 
-app.UseHttpsRedirection();
+// NOTE: No UseHttpsRedirection — Render serves on HTTP (port 10000), HTTPS is handled by their proxy.
+// HttpsRedirection would break CORS preflight requests on Render.
 app.UseCors("SplitWiseProCors");
 app.UseRateLimiter();
 app.UseAuthentication();

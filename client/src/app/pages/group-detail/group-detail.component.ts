@@ -226,7 +226,7 @@ export class GroupDetailComponent implements OnInit {
 
   shareViaTelegram() {
     const url = this.inviteData()?.inviteUrl;
-    const text = `Join my group "${this.group()?.name}" on SplitWise Pro! 💸`;
+    const text = `Join my group "${this.group()?.name}" on Samatva! ⚖️`;
     if (url) window.open(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`, '_blank');
   }
 
@@ -234,7 +234,7 @@ export class GroupDetailComponent implements OnInit {
     const data = this.inviteData();
     if (data && navigator.share) {
       navigator.share({
-        title: `Join "${this.group()?.name}" on SplitWise Pro`,
+        title: `Join "${this.group()?.name}" on Samatva`,
         text: `Join my expense group "${this.group()?.name}"!`,
         url: data.inviteUrl
       });
@@ -282,9 +282,9 @@ export class GroupDetailComponent implements OnInit {
 
   // ── Nudge / Remind ────────────────────────────────────────────
   nudgeUser(debt: DebtSimplificationDto) {
-    const msg = `Hey ${debt.fromDisplayName}! You owe ${this.getCurrencySymbol(debt.currency)}${debt.amount} to ${debt.toDisplayName} in "${this.group()?.name}". Settle up on SplitWise Pro! 💸`;
+    const msg = `Hey ${debt.fromDisplayName}! You owe ${this.getCurrencySymbol(debt.currency)}${debt.amount} to ${debt.toDisplayName} in "${this.group()?.name}". Settle up on Samatva! ⚖️`;
     if (navigator.share) {
-      navigator.share({ title: 'SplitWise Pro Reminder', text: msg });
+      navigator.share({ title: 'Samatva Reminder', text: msg });
     } else {
       const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(msg)}`;
       window.open(whatsappUrl, '_blank');
