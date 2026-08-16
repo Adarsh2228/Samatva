@@ -79,9 +79,14 @@ public class SmtpEmailService : IEmailService
     private async Task SendAsync(string toEmail, string subject, string htmlBody, CancellationToken ct)
     {
         var apiKey   = _config["Email:Password"]     ?? "";
-        // In the user's Render config, Email__Username contains the verified sender email (shuklaadarsh2228@gmail.com)
-        var from     = _config["Email:Username"]     ?? "noreply@splitwisepro.app";
+        // Prefer Email__From if it's a real address (not the brevo SMTP login), else use Email__Username
+        var fromRaw  = _config["Email:From"]         ?? "";
+        var from     = (string.IsNullOrWhiteSpace(fromRaw) || fromRaw.Contains("smtp-brevo.com"))
+                        ? (_config["Email:Username"] ?? "noreply@samatva.app")
+                        : fromRaw;
         var fromName = _config["Email:FromName"]     ?? "Samatva App";
+
+        _logger.LogInformation("📧 Email config — apiKey set: {HasKey}, sender: {From}, to: {To}", !string.IsNullOrEmpty(apiKey), from, toEmail);
 
         if (string.IsNullOrWhiteSpace(apiKey))
         {
