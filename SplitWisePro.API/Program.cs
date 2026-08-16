@@ -130,18 +130,29 @@ builder.Services.AddSignalR(options =>
 });
 
 // ── CORS ───────────────────────────────────────────────────────────
-var allowedOrigins = builder.Configuration
-    .GetSection("Cors:AllowedOrigins")
-    .Get<string[]>() ?? ["http://localhost:4200"];
-
+// Using SetIsOriginAllowed instead of WithOrigins so:
+// 1. Any *.vercel.app frontend URL works (including samatva-one.vercel.app)
+// 2. Render environment variable overrides don't break things
+// 3. Vercel preview deployments work automatically
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("SplitWiseProCors", policy =>
     {
-        policy.WithOrigins(allowedOrigins)
-              .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials(); // Required for SignalR
+        policy.SetIsOriginAllowed(origin =>
+        {
+            if (string.IsNullOrEmpty(origin)) return false;
+            var uri = new Uri(origin);
+            // Allow any Vercel deployment
+            if (uri.Host.EndsWith(".vercel.app", StringComparison.OrdinalIgnoreCase)) return true;
+            // Allow localhost for dev
+            if (uri.Host == "localhost" || uri.Host == "127.0.0.1") return true;
+            // Allow Capacitor/Ionic for mobile
+            if (origin.StartsWith("capacitor://") || origin.StartsWith("ionic://")) return true;
+            return false;
+        })
+        .AllowAnyHeader()
+        .AllowAnyMethod()
+        .AllowCredentials(); // Required for SignalR
     });
 });
 
