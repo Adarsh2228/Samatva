@@ -38,40 +38,61 @@ public class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Register([FromBody] RegisterRequest request, CancellationToken ct)
     {
+        _logger.LogInformation("=== REGISTER ATTEMPT: {Email} from Origin: {Origin} ===",
+            request?.Email, Request.Headers.Origin.ToString());
+
         if (!ModelState.IsValid)
-            return BadRequest(ModelState);
-
-        // Check if email already exists
-        var existingUser = await _context.Users
-            .AnyAsync(u => u.Email.ToLower() == request.Email.ToLower(), ct);
-
-        if (existingUser)
-            return Conflict(new { message = "A user with this email already exists." });
-
-        var user = new User
         {
-            Id = Guid.NewGuid(),
-            DisplayName = request.DisplayName,
-            Email = request.Email.ToLower().Trim(),
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password, workFactor: 12),
-            PhoneNumber = request.PhoneNumber,
-            UpiId = request.UpiId,
-            DefaultCurrency = request.DefaultCurrency
-        };
+            _logger.LogWarning("Register validation failed for {Email}: {Errors}",
+                request?.Email, string.Join(", ", ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage)));
+            return BadRequest(ModelState);
+        }
 
-        _context.Users.Add(user);
-        await _context.SaveChangesAsync(ct);
+        try
+        {
+            // Check if email already exists
+            _logger.LogInformation("Checking if email exists: {Email}", request.Email);
+            var existingUser = await _context.Users
+                .AnyAsync(u => u.Email.ToLower() == request.Email.ToLower(), ct);
 
-        var authResponse = _tokenService.GenerateTokens(user);
+            if (existingUser)
+            {
+                _logger.LogWarning("Email already exists: {Email}", request.Email);
+                return Conflict(new { message = "A user with this email already exists." });
+            }
 
-        // Store hashed refresh token
-        user.RefreshTokenHash = BCrypt.Net.BCrypt.HashPassword(authResponse.RefreshToken);
-        user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7);
-        await _context.SaveChangesAsync(ct);
+            _logger.LogInformation("Creating new user: {Email}", request.Email);
+            var user = new User
+            {
+                Id = Guid.NewGuid(),
+                DisplayName = request.DisplayName,
+                Email = request.Email.ToLower().Trim(),
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password, workFactor: 12),
+                PhoneNumber = request.PhoneNumber,
+                UpiId = request.UpiId,
+                DefaultCurrency = request.DefaultCurrency
+            };
 
-        _logger.LogInformation("New user registered: {Email}", user.Email);
+            _context.Users.Add(user);
+            await _context.SaveChangesAsync(ct);
+            _logger.LogInformation("User saved to DB: {Email} / {Id}", user.Email, user.Id);
 
-        return CreatedAtAction(nameof(GetProfile), null, authResponse);
+            var authResponse = _tokenService.GenerateTokens(user);
+            _logger.LogInformation("Tokens generated for: {Email}", user.Email);
+
+            // Store hashed refresh token
+            user.RefreshTokenHash = BCrypt.Net.BCrypt.HashPassword(authResponse.RefreshToken);
+            user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7);
+            await _context.SaveChangesAsync(ct);
+
+            _logger.LogInformation("=== REGISTER SUCCESS: {Email} ===", user.Email);
+            return CreatedAtAction(nameof(GetProfile), null, authResponse);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "=== REGISTER ERROR for {Email}: {Message} ===", request?.Email, ex.Message);
+            return StatusCode(500, new { message = $"Registration error: {ex.Message}" });
+        }
     }
 
     /// <summary>

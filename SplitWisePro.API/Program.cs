@@ -158,12 +158,36 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+// ── Startup Diagnostics ───────────────────────────────────────────
+var startupLogger = app.Services.GetRequiredService<ILogger<Program>>();
+
+// Log environment
+startupLogger.LogInformation("=== SAMATVA STARTUP ===");
+startupLogger.LogInformation("Environment: {Env}", app.Environment.EnvironmentName);
+
+// Log connection string (masked)
+var connStr = builder.Configuration.GetConnectionString("DefaultConnection") ?? "NOT SET";
+var maskedConn = connStr.Length > 20 ? connStr[..20] + "..." : connStr;
+startupLogger.LogInformation("DB ConnectionString: {Conn}", maskedConn);
+
+// Log JWT config
+startupLogger.LogInformation("JWT Issuer: {Issuer}", builder.Configuration["JwtSettings:Issuer"] ?? "NOT SET");
+startupLogger.LogInformation("JWT Audience: {Audience}", builder.Configuration["JwtSettings:Audience"] ?? "NOT SET");
+startupLogger.LogInformation("JWT Key length: {Len}", builder.Configuration["JwtSettings:SecretKey"]?.Length ?? 0);
+
 // ── Auto-migrate Database on Startup ──────────────────────────────
-// Ensures PostgreSQL tables exist on Render before handling requests.
-using (var scope = app.Services.CreateScope())
+try
 {
+    startupLogger.LogInformation("Starting database migration...");
+    using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await db.Database.MigrateAsync();
+    startupLogger.LogInformation("Database migration completed successfully.");
+}
+catch (Exception ex)
+{
+    startupLogger.LogError(ex, "DATABASE MIGRATION FAILED: {Message}", ex.Message);
+    // Don't crash — app can still serve health checks
 }
 
 // ── Middleware Pipeline ────────────────────────────────────────────
@@ -185,11 +209,23 @@ app.MapControllers();
 app.MapHub<ExpenseHub>("/hubs/expenses");
 
 // ── Health Check Endpoint ──────────────────────────────────────────
-app.MapGet("/api/health", () => Results.Ok(new
+app.MapGet("/api/health", (ILogger<Program> logger) =>
 {
-    Status = "Healthy",
-    Timestamp = DateTime.UtcNow,
-    Version = "1.0.0"
-}));
+    logger.LogInformation("Health check called.");
+    return Results.Ok(new
+    {
+        Status = "Healthy",
+        Timestamp = DateTime.UtcNow,
+        Version = "1.0.1",
+        Environment = app.Environment.EnvironmentName
+    });
+});
+
+// ── CORS Debug Endpoint ────────────────────────────────────────────
+app.MapGet("/api/cors-test", (HttpContext ctx) =>
+{
+    var origin = ctx.Request.Headers.Origin.ToString();
+    return Results.Ok(new { Message = "CORS OK", YourOrigin = origin, Timestamp = DateTime.UtcNow });
+});
 
 app.Run();
