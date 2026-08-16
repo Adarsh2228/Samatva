@@ -148,9 +148,18 @@ public class GroupsController : ControllerBase
         var token = _tokenService.GenerateGuestLinkToken(id, 7); // 7-day invite links
         group.GuestLinkToken = token;
         group.GuestLinkExpiresAt = DateTime.UtcNow.AddDays(7);
+        
+        // Ensure an active Invite Code exists so we can share it alongside the link
+        if (string.IsNullOrEmpty(group.InviteCode) || group.InviteCodeExpiresAt < DateTime.UtcNow)
+        {
+            group.InviteCode = GenerateUniqueCode();
+            group.InviteCodeExpiresAt = DateTime.UtcNow.AddHours(24);
+        }
+        
         await _context.SaveChangesAsync(ct);
 
-        var frontendUrl = $"http://localhost:4200";
+        // Dynamically get the frontend URL from the Origin header, fallback to production URL
+        var frontendUrl = Request.Headers["Origin"].FirstOrDefault() ?? "https://samatva-one.vercel.app";
         var inviteUrl = $"{frontendUrl}/join?token={Uri.EscapeDataString(token)}";
 
         return Ok(new
@@ -160,10 +169,10 @@ public class GroupsController : ControllerBase
             groupName = group.Name,
             inviterName = (await _context.Users.FindAsync(new object[] { userId.Value }, ct))?.DisplayName ?? "Someone",
             qrData = inviteUrl, // frontend generates QR from this
-            whatsappUrl = $"https://wa.me/?text={Uri.EscapeDataString($"Join my group \"{group.Name}\" on SplitWise Pro! 💸\n{inviteUrl}")}",
-            smsBody = $"Join my group \"{group.Name}\" on SplitWise Pro! {inviteUrl}",
-            emailSubject = $"Join \"{group.Name}\" on SplitWise Pro",
-            emailBody = $"Hey! I've invited you to join our expense group \"{group.Name}\" on SplitWise Pro.\n\nClick here to join: {inviteUrl}\n\nThis link expires in 7 days."
+            whatsappUrl = $"https://wa.me/?text={Uri.EscapeDataString($"Join my group \"{group.Name}\" on Samatva! ⚖️\n\n🔗 Link: {inviteUrl}\n🔢 Code: {group.InviteCode}")}",
+            smsBody = $"Join my group \"{group.Name}\" on Samatva! Link: {inviteUrl} Code: {group.InviteCode}",
+            emailSubject = $"Join \"{group.Name}\" on Samatva",
+            emailBody = $"Hey! I've invited you to join our expense group \"{group.Name}\" on Samatva.\n\nClick here to join: {inviteUrl}\n\nOr enter this 6-digit code on the Join page: {group.InviteCode}\n\nThe link expires in 7 days, and the code expires in 24 hours."
         });
     }
 
