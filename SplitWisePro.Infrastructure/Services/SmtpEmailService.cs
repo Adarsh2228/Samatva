@@ -78,15 +78,12 @@ public class SmtpEmailService : IEmailService
 
     private async Task SendAsync(string toEmail, string subject, string htmlBody, CancellationToken ct)
     {
-        // Default to Gmail if not specified
-        var host     = _config["Email:SmtpHost"]     ?? "smtp.gmail.com";
-        var portStr  = _config["Email:SmtpPort"]     ?? "587";
-        var from     = _config["Email:From"]         ?? _config["Email:Username"];
+        var apiKey   = _config["Email:Password"]     ?? "";
+        // In the user's Render config, Email__Username contains the verified sender email (shuklaadarsh2228@gmail.com)
+        var from     = _config["Email:Username"]     ?? "noreply@splitwisepro.app";
         var fromName = _config["Email:FromName"]     ?? "Samatva App";
-        var username = _config["Email:Username"]     ?? "";
-        var password = _config["Email:Password"]     ?? "";
 
-        if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
+        if (string.IsNullOrWhiteSpace(apiKey))
         {
             _logger.LogWarning("Email credentials not configured. Skipping email to {Email}. OTP logged to debug.", toEmail);
             _logger.LogDebug("📧 [DEV] Email to {Email} — Subject: {Subject}\nBody: {Body}", toEmail, subject, htmlBody);
@@ -95,26 +92,29 @@ public class SmtpEmailService : IEmailService
 
         try
         {
-            using var client = new SmtpClient(host, int.Parse(portStr))
+            using var client = new HttpClient();
+            client.DefaultRequestHeaders.Add("api-key", apiKey);
+            client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
+
+            var payload = new
             {
-                EnableSsl = true,
-                UseDefaultCredentials = false,
-                Credentials = new NetworkCredential(username, password),
-                DeliveryMethod = SmtpDeliveryMethod.Network,
-                Timeout = 15000
+                sender = new { email = from, name = fromName },
+                to = new[] { new { email = toEmail } },
+                subject = subject,
+                htmlContent = htmlBody
             };
 
-            using var message = new MailMessage
-            {
-                From = new MailAddress(from ?? username, fromName),
-                Subject = subject,
-                Body = htmlBody,
-                IsBodyHtml = true
-            };
-            message.To.Add(new MailAddress(toEmail));
+            var response = await client.PostAsJsonAsync("https://api.brevo.com/v3/smtp/email", payload, ct);
 
-            await client.SendMailAsync(message, ct);
-            _logger.LogInformation("✉️ Email sent successfully to {Email} via {Host}", toEmail, host);
+            if (response.IsSuccessStatusCode)
+            {
+                _logger.LogInformation("✉️ Email sent successfully to {Email}: {Subject}", toEmail, subject);
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync(ct);
+                _logger.LogWarning("⚠️ Brevo API rejected the email to {Email}. Status: {StatusCode}. Error: {Error}", toEmail, response.StatusCode, error);
+            }
         }
         catch (Exception ex)
         {
