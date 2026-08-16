@@ -30,7 +30,8 @@ public class TripsController : ControllerBase
             .OrderByDescending(t => t.CreatedAt)
             .ToListAsync(ct);
         var currentUserId = userId.Value;
-        return Ok(trips.Select(t => MapToDto(t, currentUserId)));
+        var frontendUrl = Request.Headers["Origin"].FirstOrDefault() ?? "https://samatva-one.vercel.app";
+        return Ok(trips.Select(t => MapToDto(t, currentUserId, frontendUrl)));
     }
 
     // ── GET /api/trips/{id} — Get one trip ────────────────────────
@@ -41,7 +42,8 @@ public class TripsController : ControllerBase
         var trip = await LoadTrip(id, ct);
         if (trip is null) return NotFound();
         if (!IsMember(trip, userId.Value)) return Forbid();
-        return Ok(MapToDto(trip, userId.Value));
+        var frontendUrl = Request.Headers["Origin"].FirstOrDefault() ?? "https://samatva-one.vercel.app";
+        return Ok(MapToDto(trip, userId.Value, frontendUrl));
     }
 
     // ── POST /api/trips — Create trip ─────────────────────────────
@@ -71,7 +73,8 @@ public class TripsController : ControllerBase
         await _db.SaveChangesAsync(ct);
 
         var created = await LoadTrip(trip.Id, ct);
-        return CreatedAtAction(nameof(GetTrip), new { id = trip.Id }, MapToDto(created!, userId.Value));
+        var frontendUrl = Request.Headers["Origin"].FirstOrDefault() ?? "https://samatva-one.vercel.app";
+        return CreatedAtAction(nameof(GetTrip), new { id = trip.Id }, MapToDto(created!, userId.Value, frontendUrl));
     }
 
     // ── POST /api/trips/join — Join via code ──────────────────────
@@ -92,7 +95,8 @@ public class TripsController : ControllerBase
         _db.TripMembers.Add(new TripMember { Id = Guid.NewGuid(), TripId = trip.Id, UserId = userId.Value });
         await _db.SaveChangesAsync(ct);
         var updated = await LoadTrip(trip.Id, ct);
-        return Ok(MapToDto(updated!, userId.Value));
+        var frontendUrl = Request.Headers["Origin"].FirstOrDefault() ?? "https://samatva-one.vercel.app";
+        return Ok(MapToDto(updated!, userId.Value, frontendUrl));
     }
 
     // ── PUT /api/trips/{id}/budget — Update budget (admin only) ───
@@ -105,7 +109,8 @@ public class TripsController : ControllerBase
         if (trip.AdminUserId != userId.Value) return Forbid();
         trip.Budget = req.Budget;
         await _db.SaveChangesAsync(ct);
-        return Ok(MapToDto(trip, userId.Value));
+        var frontendUrl = Request.Headers["Origin"].FirstOrDefault() ?? "https://samatva-one.vercel.app";
+        return Ok(MapToDto(trip, userId.Value, frontendUrl));
     }
 
     // ── GET /api/trips/{id}/expenses — Get all expenses ───────────
@@ -415,7 +420,7 @@ public class TripsController : ControllerBase
         return c is not null ? Guid.Parse(c) : null;
     }
 
-    private TripDto MapToDto(Trip t, Guid currentUserId)
+    private TripDto MapToDto(Trip t, Guid currentUserId, string frontendUrl)
     {
         var validExpenses = _db.TripExpenses
             .IgnoreQueryFilters()
@@ -423,7 +428,7 @@ public class TripsController : ControllerBase
             .Sum(e => (decimal?)e.Amount) ?? 0;
 
         var code = t.TripCode;
-        var qrData = $"splitwisepro://join-trip?code={code}";
+        var qrData = $"{frontendUrl}/trips?code={code}";
         var qrUrl = $"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={Uri.EscapeDataString(qrData)}";
 
         return new TripDto
