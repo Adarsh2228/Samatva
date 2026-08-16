@@ -77,12 +77,6 @@ export class JoinGroupComponent implements OnInit {
       return;
     }
 
-    if (!this.auth.isAuthenticated()) {
-      this.isLoading.set(false);
-      this.message.set('Please sign in or register first, then click the invite link again.');
-      return;
-    }
-
     this.groupService.joinViaToken(token).subscribe({
       next: (res) => {
         this.isLoading.set(false);

@@ -28,7 +28,6 @@ export class DashboardComponent implements OnInit {
   newGroup = { name: '', description: '', defaultCurrency: 'INR' };
 
   ngOnInit() {
-    if (!this.auth.isAuthenticated()) { this.router.navigate(['/login']); return; }
     this.loadGroups();
   }
 

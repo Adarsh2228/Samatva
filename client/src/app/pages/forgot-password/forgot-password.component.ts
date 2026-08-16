@@ -69,6 +69,7 @@ type Step = 'email' | 'otp' | 'password';
           <div class="step-content">
             <h2 class="step-title">Enter OTP</h2>
             <p class="step-desc">Check your email <strong>{{ email }}</strong> for a 5-digit code. Valid for 10 minutes.</p>
+            @if (success()) { <div class="success-banner">✅ {{ success() }}</div> }
             <div class="otp-inputs">
               @for (i of [0,1,2,3,4]; track i) {
                 <input class="otp-box" type="text" maxlength="1"

@@ -1,7 +1,7 @@
 import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 
 @Component({
@@ -44,7 +44,7 @@ import { AuthService } from '../../services/auth.service';
             @if (isLoading()) { <span class="spinner"></span> Creating account... } @else { Create Account }
           </button>
         </form>
-        <p class="auth-footer">Already have an account? <a routerLink="/login">Sign in</a></p>
+        <p class="auth-footer">Already have an account? <a routerLink="/login" [queryParams]="returnUrl !== '/dashboard' ? {returnUrl: returnUrl} : null">Sign in</a></p>
       </div>
     </div>
   `,
@@ -55,12 +55,16 @@ export class RegisterComponent {
   isLoading = signal(false);
   errorMsg = signal('');
 
-  constructor(private auth: AuthService, private router: Router) {}
+  returnUrl: string;
+
+  constructor(private auth: AuthService, private router: Router, private route: ActivatedRoute) {
+    this.returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/dashboard';
+  }
 
   onRegister() {
     this.isLoading.set(true); this.errorMsg.set('');
     this.auth.register(this.form).subscribe({
-      next: () => { this.isLoading.set(false); this.router.navigate(['/dashboard']); },
+      next: () => { this.isLoading.set(false); this.router.navigateByUrl(this.returnUrl); },
       error: (err) => { this.isLoading.set(false); this.errorMsg.set(err.error?.message || 'Registration failed.'); }
     });
   }

@@ -1,7 +1,7 @@
 import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 
 @Component({
@@ -44,7 +44,7 @@ import { AuthService } from '../../services/auth.service';
             @else { Sign In }
           </button>
         </form>
-        <p class="auth-footer">Don't have an account? <a routerLink="/register">Create one</a></p>
+        <p class="auth-footer">Don't have an account? <a routerLink="/register" [queryParams]="returnUrl !== '/dashboard' ? {returnUrl: returnUrl} : null">Create one</a></p>
       </div>
     </div>
   `,
@@ -56,14 +56,17 @@ export class LoginComponent {
   errorMsg = signal('');
   showPassword = signal(false);
 
-  constructor(private auth: AuthService, private router: Router) {
-    if (this.auth.isAuthenticated()) this.router.navigate(['/dashboard']);
+  returnUrl: string;
+
+  constructor(private auth: AuthService, private router: Router, private route: ActivatedRoute) {
+    this.returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/dashboard';
+    if (this.auth.isAuthenticated()) this.router.navigateByUrl(this.returnUrl);
   }
 
   onLogin() {
     this.isLoading.set(true); this.errorMsg.set('');
     this.auth.login({ email: this.email, password: this.password }).subscribe({
-      next: () => { this.isLoading.set(false); this.router.navigate(['/dashboard']); },
+      next: () => { this.isLoading.set(false); this.router.navigateByUrl(this.returnUrl); },
       error: (err) => { this.isLoading.set(false); this.errorMsg.set(err.error?.message || 'Login failed. Please try again.'); }
     });
   }

@@ -87,7 +87,6 @@ export class GroupDetailComponent implements OnInit {
   totalGroupSaved = signal(0);
 
   ngOnInit() {
-    if (!this.auth.isAuthenticated()) { this.router.navigate(['/login']); return; }
     this.groupId = this.route.snapshot.paramMap.get('id') || '';
     this.isMobileDevice.set(/Android|iPhone|iPad|iPod/i.test(navigator.userAgent));
     this.loadAll();
