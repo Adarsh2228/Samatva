@@ -504,7 +504,7 @@ namespace SplitWisePro.Infrastructure.Data.Migrations
 
                     b.Property<string>("Payload")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<int>("RetryCount")
                         .HasColumnType("integer");
@@ -547,7 +547,8 @@ namespace SplitWisePro.Infrastructure.Data.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<decimal>("Budget")
-                        .HasColumnType("decimal(18,2)");
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -616,7 +617,8 @@ namespace SplitWisePro.Infrastructure.Data.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<decimal>("Amount")
-                        .HasColumnType("decimal(18,2)");
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
 
                     b.Property<string>("Category")
                         .IsRequired()
@@ -662,7 +664,7 @@ namespace SplitWisePro.Infrastructure.Data.Migrations
                         .HasColumnType("character varying(1000)");
 
                     b.Property<string>("ScreenshotData")
-                        .HasColumnType("TEXT")
+                        .HasColumnType("text")
                         .HasColumnName("ScreenshotData");
 
                     b.Property<DateTime>("SpentAt")

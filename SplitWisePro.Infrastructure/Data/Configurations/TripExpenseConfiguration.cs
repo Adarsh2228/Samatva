@@ -13,11 +13,10 @@ public class TripExpenseConfiguration : IEntityTypeConfiguration<TripExpense>
 
         builder.Property(e => e.Description).IsRequired().HasMaxLength(500);
         builder.Property(e => e.Reason).IsRequired().HasMaxLength(1000);
-        builder.Property(e => e.Amount).HasColumnType("decimal(18,2)");
+        builder.Property(e => e.Amount).HasPrecision(18, 2);
         builder.Property(e => e.Currency).IsRequired().HasMaxLength(3).HasDefaultValue("INR");
         builder.Property(e => e.ScreenshotData)
-            .HasColumnName("ScreenshotData")
-            .HasColumnType("TEXT"); // supports large base64 strings
+            .HasColumnName("ScreenshotData");
         builder.Property(e => e.Category).HasMaxLength(100).HasDefaultValue("General");
         builder.Property(e => e.RejectionReason).HasMaxLength(1000);
 

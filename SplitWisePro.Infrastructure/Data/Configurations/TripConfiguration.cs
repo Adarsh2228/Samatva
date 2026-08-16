@@ -15,7 +15,7 @@ public class TripConfiguration : IEntityTypeConfiguration<Trip>
         builder.Property(t => t.Description).HasMaxLength(1000);
         builder.Property(t => t.Destination).HasMaxLength(200);
         builder.Property(t => t.Currency).IsRequired().HasMaxLength(3).HasDefaultValue("INR");
-        builder.Property(t => t.Budget).HasColumnType("decimal(18,2)");
+        builder.Property(t => t.Budget).HasPrecision(18, 2);
         builder.Property(t => t.TripCode).IsRequired().HasMaxLength(20);
 
         builder.HasIndex(t => t.TripCode).IsUnique().HasDatabaseName("IX_Trips_TripCode");

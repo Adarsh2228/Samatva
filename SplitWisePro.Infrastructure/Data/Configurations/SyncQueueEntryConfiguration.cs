@@ -21,8 +21,7 @@ public class SyncQueueEntryConfiguration : IEntityTypeConfiguration<SyncQueueEnt
             .HasMaxLength(20);
 
         builder.Property(sq => sq.Payload)
-            .IsRequired()
-            .HasColumnType("nvarchar(max)");
+            .IsRequired();
 
         builder.Property(sq => sq.Status)
             .IsRequired()
