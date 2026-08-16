@@ -1,4 +1,6 @@
 using System.Text;
+using Microsoft.EntityFrameworkCore;
+using SplitWisePro.Infrastructure.Data;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using System.Security.Claims;
@@ -144,6 +146,14 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+
+// ── Auto-migrate Database on Startup ──────────────────────────────
+// Ensures PostgreSQL tables exist on Render before handling requests.
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    await db.Database.MigrateAsync();
+}
 
 // ── Middleware Pipeline ────────────────────────────────────────────
 if (app.Environment.IsDevelopment())
