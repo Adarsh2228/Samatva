@@ -22,6 +22,16 @@ public static class DependencyInjection
         var connStr = configuration.GetConnectionString("DefaultConnection")
             ?? throw new InvalidOperationException("DefaultConnection not configured.");
 
+        // Automatically parse Render's "postgres://user:pass@host/db" format
+        if (connStr.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase) || 
+            connStr.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase))
+        {
+            var uri = new Uri(connStr);
+            var userInfo = uri.UserInfo.Split(':');
+            var dbName = uri.AbsolutePath.TrimStart('/');
+            connStr = $"Host={uri.Host};Port={(uri.Port > 0 ? uri.Port : 5432)};Database={dbName};Username={userInfo[0]};Password={(userInfo.Length > 1 ? userInfo[1] : "")};SSL Mode=Prefer;Trust Server Certificate=true";
+        }
+
         var useSqlServer = string.Equals(
             configuration["USE_SQL_SERVER"], "true",
             StringComparison.OrdinalIgnoreCase);
