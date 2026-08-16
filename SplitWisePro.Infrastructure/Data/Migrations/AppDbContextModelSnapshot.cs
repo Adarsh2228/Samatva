@@ -68,8 +68,7 @@ namespace SplitWisePro.Infrastructure.Data.Migrations
                         .HasDatabaseName("IX_ActivityLogs_CreatedAt");
 
                     b.HasIndex("GroupId")
-                        .HasDatabaseName("IX_ActivityLogs_GroupId")
-                        .HasFilter("[GroupId] IS NOT NULL");
+                        .HasDatabaseName("IX_ActivityLogs_GroupId");
 
                     b.HasIndex("UserId")
                         .HasDatabaseName("IX_ActivityLogs_UserId");
@@ -814,12 +813,10 @@ namespace SplitWisePro.Infrastructure.Data.Migrations
                         .HasDatabaseName("IX_Users_Email");
 
                     b.HasIndex("PhoneNumber")
-                        .HasDatabaseName("IX_Users_PhoneNumber")
-                        .HasFilter("[PhoneNumber] IS NOT NULL");
+                        .HasDatabaseName("IX_Users_PhoneNumber");
 
                     b.HasIndex("UpiId")
-                        .HasDatabaseName("IX_Users_UpiId")
-                        .HasFilter("[UpiId] IS NOT NULL");
+                        .HasDatabaseName("IX_Users_UpiId");
 
                     b.ToTable("Users", (string)null);
                 });

@@ -26,8 +26,7 @@ public class ActivityLogConfiguration : IEntityTypeConfiguration<ActivityLog>
             .HasDatabaseName("IX_ActivityLogs_UserId");
 
         builder.HasIndex(a => a.GroupId)
-            .HasDatabaseName("IX_ActivityLogs_GroupId")
-            .HasFilter("[GroupId] IS NOT NULL");
+            .HasDatabaseName("IX_ActivityLogs_GroupId");
 
         builder.HasIndex(a => new { a.UserId, a.IsRead })
             .HasDatabaseName("IX_ActivityLogs_UserId_IsRead");

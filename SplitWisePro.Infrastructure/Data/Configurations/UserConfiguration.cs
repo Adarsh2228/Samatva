@@ -52,11 +52,9 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
 
         // Indexes for performance
         builder.HasIndex(u => u.PhoneNumber)
-            .HasDatabaseName("IX_Users_PhoneNumber")
-            .HasFilter("[PhoneNumber] IS NOT NULL");
+            .HasDatabaseName("IX_Users_PhoneNumber");
 
         builder.HasIndex(u => u.UpiId)
-            .HasDatabaseName("IX_Users_UpiId")
-            .HasFilter("[UpiId] IS NOT NULL");
+            .HasDatabaseName("IX_Users_UpiId");
     }
 }

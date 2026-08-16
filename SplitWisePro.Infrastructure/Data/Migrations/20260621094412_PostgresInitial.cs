@@ -410,8 +410,7 @@ namespace SplitWisePro.Infrastructure.Data.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_ActivityLogs_GroupId",
                 table: "ActivityLogs",
-                column: "GroupId",
-                filter: "[GroupId] IS NOT NULL");
+                column: "GroupId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_ActivityLogs_UserId",
@@ -592,14 +591,12 @@ namespace SplitWisePro.Infrastructure.Data.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_Users_PhoneNumber",
                 table: "Users",
-                column: "PhoneNumber",
-                filter: "[PhoneNumber] IS NOT NULL");
+                column: "PhoneNumber");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Users_UpiId",
                 table: "Users",
-                column: "UpiId",
-                filter: "[UpiId] IS NOT NULL");
+                column: "UpiId");
         }
 
         /// <inheritdoc />
